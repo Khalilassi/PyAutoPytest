@@ -155,7 +155,128 @@ pytest --html=report.html --self-contained-html
 
 ## Writing Tests
 
-### UI Test Example
+### Test Architecture: Project Facades Pattern
+
+**⭐ New Pattern (Recommended)**: Tests use high-level facades that encapsulate all page/API/mobile interactions. This keeps tests clean and maintainable by moving all action logic to project modules.
+
+**Key Principle**: Test code should contain only:
+1. High-level actions via facades (e.g., `self.web.inspection_portal.login()`)
+2. Assertions
+3. Test data
+
+All interaction logic (clicks, fills, API calls, waits) lives in project facades and page objects.
+
+### Project Facades
+
+The framework provides three main facade types automatically attached to test class instances:
+
+- **`self.web`**: Web UI facades (e.g., `self.web.inspection_portal`)
+- **`self.api`**: API facades (e.g., `self.api.facility_portal`)
+- **`self.appium`**: Mobile app facades (e.g., `self.appium.inspector_mobile`)
+
+### UI Test Example (New Pattern)
+
+```python
+import pytest
+
+@pytest.mark.ui
+@pytest.mark.web
+class TestLogin:
+    """Tests automatically get self.web, self.api, self.appium from fixtures."""
+    
+    def test_successful_login(self, page):
+        # High-level action - all page interactions hidden in facade
+        self.web.inspection_portal.login('test_user', 'test_password')
+        
+        # Simple assertion
+        assert self.web.inspection_portal.is_logged_in()
+```
+
+### API Test Example (New Pattern)
+
+```python
+import pytest
+
+@pytest.mark.api
+class TestFacilityApi:
+    def test_get_facilities(self, requests_session):
+        # High-level action - all HTTP logic hidden in facade
+        facilities = self.api.facility_portal.get_facilities()
+        
+        # Simple assertion
+        assert isinstance(facilities, list)
+```
+
+### Mobile Test Example (New Pattern)
+
+```python
+import pytest
+
+@pytest.mark.mobile
+class TestInspectionForm:
+    def test_submit_inspection(self, appium_driver):
+        # High-level action - all Appium logic hidden in facade
+        result = self.appium.inspector_mobile.submit_inspection({
+            'title': 'Test Inspection',
+            'notes': 'Test notes'
+        })
+        
+        # Simple assertion
+        assert result['success'] is True
+```
+
+### Old Pattern (Page Objects in Tests)
+
+The old pattern with direct page object usage in tests is still supported but not recommended:
+
+```python
+import pytest
+from projects.inspection_portal.pages.login_page import LoginPage
+
+@pytest.mark.ui
+@pytest.mark.web
+class TestLogin:
+    def test_login(self, navigate_to, framework_page):
+        navigate_to("/login")
+        
+        login_page = LoginPage(framework_page)
+        login_page.login("username", "password")
+        
+        assert "dashboard" in framework_page.url
+```
+
+### Creating New Project Facades
+
+When adding a new project, create a facade class:
+
+```python
+# projects/my_project/facade.py
+from playwright.sync_api import Page
+from projects.my_project.pages.home_page import HomePage
+
+class MyProjectWebFacade:
+    def __init__(self, page: Page, base_url: str):
+        self.page = page
+        self.base_url = base_url
+        self.home_page = HomePage(page)
+    
+    def navigate_home(self) -> None:
+        """Navigate to home page."""
+        self.page.goto(f"{self.base_url}/home")
+    
+    def perform_action(self, data: dict) -> bool:
+        """High-level action encapsulating multiple page interactions."""
+        self.navigate_home()
+        self.home_page.fill_form(data)
+        self.home_page.submit()
+        return self.home_page.is_success_displayed()
+```
+
+Then register it in `tests/conftest.py` in the `attach_facades` fixture.
+
+### UI Test Example (Direct Playwright)
+
+For simple cases, you can still use Playwright directly:
 
 ```python
 import pytest

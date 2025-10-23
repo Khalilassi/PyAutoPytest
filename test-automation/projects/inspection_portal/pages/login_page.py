@@ -36,6 +36,20 @@ class LoginPage(BasePage):
         super().__init__(page)
         logger.info("Initialized LoginPage")
     
+    def goto_login(self, base_url: str) -> None:
+        """
+        Navigate to login page.
+        
+        TODO: Update URL path to match actual application login route
+        
+        Args:
+            base_url: Base URL of the application
+        """
+        login_url = f"{base_url.rstrip('/')}/login"
+        logger.info(f"Navigating to login page: {login_url}")
+        self.page.goto(login_url)
+        logger.info("Login page loaded")
+    
     def login(self, username: str, password: str) -> None:
         """
         Perform login with username and password.

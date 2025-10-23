@@ -5,13 +5,18 @@ Provides pytest-playwright integration and compatibility bridges
 for the PyAutoPytest framework.
 """
 import os
-from typing import Generator
+from types import SimpleNamespace
+from typing import Generator, Optional
 
 import pytest
+import requests
 from playwright.sync_api import Page, BrowserContext
 
 from infra.core.config_manager import get_config
 from infra.core.test_context import TestContext
+from projects.inspection_portal.facade import InspectionPortalWebFacade
+from projects.facility_portal.api_facade import FacilityPortalApiFacade
+from projects.inspector_mobile.facade import InspectorMobileFacade
 
 
 @pytest.fixture(scope="session")
@@ -150,3 +155,118 @@ def navigate_to(framework_page: Page):
         framework_page.goto(url)
     
     return _navigate_to
+
+
+@pytest.fixture(scope="session")
+def requests_session() -> Generator[requests.Session, None, None]:
+    """
+    Provide a requests.Session for API testing.
+    
+    Yields:
+        requests.Session instance
+    """
+    session = requests.Session()
+    yield session
+    session.close()
+
+
+@pytest.fixture
+def appium_driver() -> Optional[object]:
+    """
+    Provide Appium driver for mobile testing.
+    
+    This is a placeholder that returns None. 
+    TODO: Implement real Appium driver initialization when mobile testing is ready.
+    
+    Returns:
+        None (placeholder for Appium driver)
+    """
+    # TODO: Initialize and return actual Appium WebDriver
+    # from appium import webdriver
+    # desired_caps = {...}
+    # driver = webdriver.Remote('http://localhost:4723/wd/hub', desired_caps)
+    # yield driver
+    # driver.quit()
+    
+    return None
+
+
+@pytest.fixture
+def config() -> SimpleNamespace:
+    """
+    Provide configuration namespace for tests.
+    
+    Returns:
+        SimpleNamespace with base_url, api_base_url, and mobile config
+    """
+    config_manager = get_config()
+    
+    # Get base URLs from config
+    base_url = config_manager.get('base_url', 'https://example.com')
+    # API base URL - TODO: Update with actual API URL from config
+    api_base_url = config_manager.get('api_base_url', f"{base_url}/api")
+    
+    # Mobile config - TODO: Update with actual mobile app config
+    mobile_config = {
+        'platformName': 'Android',
+        'platformVersion': '11.0',
+        'deviceName': 'emulator',
+        'app': '/path/to/app.apk',  # TODO: Update with actual app path
+        'automationName': 'UiAutomator2'
+    }
+    
+    return SimpleNamespace(
+        base_url=base_url,
+        api_base_url=api_base_url,
+        mobile=mobile_config
+    )
+
+
+@pytest.fixture(autouse=True)
+def attach_facades(
+    request,
+    page: Page,
+    requests_session: requests.Session,
+    config: SimpleNamespace,
+    appium_driver: Optional[object]
+):
+    """
+    Attach project facades to test class instances.
+    
+    This fixture automatically attaches web, api, and appium facades to test
+    instances, enabling tests to use:
+    - self.web.inspection_portal for web UI actions
+    - self.api.facility_portal for API actions
+    - self.appium.inspector_mobile for mobile actions
+    
+    Args:
+        request: Pytest request object
+        page: Playwright Page fixture
+        requests_session: Requests Session fixture
+        config: Configuration namespace
+        appium_driver: Appium driver (placeholder)
+    """
+    # Only attach to test class instances
+    if not hasattr(request, 'instance') or request.instance is None:
+        return
+    
+    # Create web facade namespace
+    web = SimpleNamespace(
+        inspection_portal=InspectionPortalWebFacade(page, config.base_url)
+    )
+    
+    # Create API facade namespace
+    api = SimpleNamespace(
+        facility_portal=FacilityPortalApiFacade(requests_session, config.api_base_url)
+    )
+    
+    # Create mobile facade namespace
+    appium = SimpleNamespace(
+        inspector_mobile=InspectorMobileFacade(appium_driver, config.mobile)
+    )
+    
+    # Attach facades to test instance
+    request.instance.web = web
+    request.instance.api = api
+    request.instance.appium = appium
+
