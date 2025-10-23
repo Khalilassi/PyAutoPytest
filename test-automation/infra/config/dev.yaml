@@ -1,0 +1,37 @@
+# Development Environment Configuration
+
+environment: dev
+
+# Web Configuration
+web:
+  base_url: "https://dev.example.com"
+  implicit_wait: 10
+  page_load_timeout: 30
+  browser: chrome
+  headless: false
+
+# API Configuration
+api:
+  base_url: "https://api.dev.example.com"
+  timeout: 30
+  verify_ssl: true
+
+# Mobile Configuration
+mobile:
+  platform_name: Android
+  platform_version: "12.0"
+  device_name: "Android Emulator"
+  app_package: "com.example.dev"
+  app_activity: ".MainActivity"
+  automation_name: UiAutomator2
+
+# Database Configuration
+database:
+  host: "dev-db.example.com"
+  port: 5432
+  name: "test_db_dev"
+
+# Logging
+logging:
+  level: DEBUG
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
