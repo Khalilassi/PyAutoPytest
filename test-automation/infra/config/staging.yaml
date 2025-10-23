@@ -1,0 +1,7 @@
+# Staging Environment Configuration
+base_url: "https://staging.example.com"
+browser: "chrome"
+implicit_wait: 10
+explicit_wait: 20
+headless: true
+window_size: "1920x1080"

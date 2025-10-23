@@ -1,0 +1,29 @@
+# PyAutoPytest Framework Dependencies
+
+# Core testing framework
+pytest==7.4.3
+pytest-html==4.1.1
+pytest-xdist==3.5.0
+
+# Selenium and WebDriver management
+selenium==4.16.0
+webdriver-manager==4.0.1
+
+# API testing
+requests==2.31.0
+
+# Configuration and environment
+pyyaml==6.0.1
+python-dotenv==1.0.0
+
+# Test data generation
+faker==22.0.0
+
+# Mobile testing (optional - for future Appium integration)
+Appium-Python-Client==3.1.0
+
+# Type hints (for Python < 3.10)
+typing-extensions==4.9.0
+
+# Additional utilities
+urllib3==2.1.0
