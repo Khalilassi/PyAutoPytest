@@ -1,27 +1,41 @@
 """
 Driver Manager - Thread-safe manager for WebDriver lifecycle.
 
-Provides singleton/context manager pattern for managing WebDriver instances
-with proper cleanup and thread safety.
+⚠️ DEPRECATED: This module is deprecated for web UI testing.
+Use pytest-playwright fixtures instead (page, context, browser).
+
+For backward compatibility, this module is kept but raises warnings.
+New tests should use pytest-playwright's built-in fixtures.
+
+Migration guide:
+- Old: driver_manager = DriverManager(config)
+- New: Use pytest fixture 'page' from pytest-playwright
+
+Example:
+    def test_example(page):
+        page.goto("https://example.com")
+        page.click("#button")
 """
-import threading
+import warnings
 from typing import Optional
 
-from selenium.webdriver.remote.webdriver import WebDriver
-
-from infra.core.driver_bundle import DriverBundle
-from infra.core.driver_factory import create_driver
 from infra.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Deprecation warning message
+DEPRECATION_MSG = (
+    "DriverManager is deprecated for web UI testing. "
+    "Use pytest-playwright fixtures (page, context, browser) instead. "
+    "See: https://playwright.dev/python/docs/test-runners"
+)
+
 
 class DriverManager:
     """
-    Thread-safe WebDriver manager using context manager pattern.
+    DEPRECATED: Thread-safe WebDriver manager using context manager pattern.
     
-    Manages driver lifecycle with proper initialization and cleanup.
-    Thread-local storage ensures each thread gets its own driver instance.
+    Use pytest-playwright fixtures instead.
     """
     
     def __init__(self, config: Optional[dict] = None):
@@ -29,103 +43,70 @@ class DriverManager:
         Initialize DriverManager.
         
         Args:
-            config: Configuration dictionary for driver creation
+            config: Configuration dictionary (deprecated)
         """
+        warnings.warn(DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
         self.config = config or {}
-        self._local = threading.local()
-        self._lock = threading.Lock()
     
-    def start_driver(self, browser: Optional[str] = None, **kwargs) -> WebDriver:
+    def start_driver(self, browser: Optional[str] = None, **kwargs):
         """
-        Start a new WebDriver instance for the current thread.
+        DEPRECATED: Start a new WebDriver instance.
         
-        Args:
-            browser: Browser type (overrides config)
-            **kwargs: Additional arguments for driver creation
-            
-        Returns:
-            WebDriver instance
+        Raises:
+            NotImplementedError: Always raised to guide users to Playwright
         """
-        with self._lock:
-            if hasattr(self._local, 'driver_bundle') and self._local.driver_bundle:
-                logger.warning("Driver already exists for this thread, returning existing driver")
-                return self._local.driver_bundle.driver
-            
-            browser = browser or self.config.get('browser', 'chrome')
-            logger.info(f"Starting {browser} driver for thread {threading.current_thread().name}")
-            
-            driver = create_driver(
-                browser=browser,
-                config=self.config,
-                **kwargs
-            )
-            
-            self._local.driver_bundle = DriverBundle(
-                driver=driver,
-                browser=browser,
-                config=self.config
-            )
-            
-            return driver
+        raise NotImplementedError(
+            "Selenium WebDriver is no longer supported. "
+            "Use pytest-playwright fixtures: def test_example(page): ..."
+        )
     
-    def get_driver(self) -> Optional[WebDriver]:
+    def get_driver(self):
         """
-        Get WebDriver instance for current thread.
+        DEPRECATED: Get WebDriver instance.
         
         Returns:
-            WebDriver instance or None if not started
+            None (deprecated)
         """
-        if hasattr(self._local, 'driver_bundle') and self._local.driver_bundle:
-            return self._local.driver_bundle.driver
         return None
     
     def stop_driver(self) -> None:
-        """Stop and cleanup WebDriver for current thread."""
-        with self._lock:
-            if hasattr(self._local, 'driver_bundle') and self._local.driver_bundle:
-                logger.info(f"Stopping driver for thread {threading.current_thread().name}")
-                self._local.driver_bundle.quit()
-                self._local.driver_bundle = None
+        """DEPRECATED: Stop and cleanup WebDriver."""
+        pass
     
     def __enter__(self):
-        """Context manager entry - starts driver."""
-        self.start_driver()
+        """Context manager entry - deprecated."""
+        warnings.warn(DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - stops driver."""
-        self.stop_driver()
+        """Context manager exit - deprecated."""
+        pass
 
 
-# Module-level singleton instance
+# Module-level singleton instance (deprecated)
 _driver_manager: Optional[DriverManager] = None
-_manager_lock = threading.Lock()
 
 
 def get_driver_manager(config: Optional[dict] = None) -> DriverManager:
     """
-    Get global DriverManager instance (singleton pattern).
+    DEPRECATED: Get global DriverManager instance.
+    
+    Use pytest-playwright fixtures instead.
     
     Args:
-        config: Configuration dictionary (used only on first call)
+        config: Configuration dictionary (deprecated)
         
     Returns:
-        DriverManager instance
+        DriverManager instance (deprecated)
     """
+    warnings.warn(DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
     global _driver_manager
-    
     if _driver_manager is None:
-        with _manager_lock:
-            if _driver_manager is None:
-                _driver_manager = DriverManager(config)
-    
+        _driver_manager = DriverManager(config)
     return _driver_manager
 
 
 def reset_driver_manager() -> None:
-    """Reset global DriverManager instance (useful for testing)."""
+    """DEPRECATED: Reset global DriverManager instance."""
     global _driver_manager
-    with _manager_lock:
-        if _driver_manager:
-            _driver_manager.stop_driver()
-        _driver_manager = None
+    _driver_manager = None

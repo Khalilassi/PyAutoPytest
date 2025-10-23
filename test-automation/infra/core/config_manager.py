@@ -53,6 +53,10 @@ class ConfigManager:
         """
         Get configuration value by key with optional default.
         
+        Supports environment variable overrides for specific keys:
+        - BROWSER_HEADLESS: Override headless setting
+        - BASE_URL: Override base URL
+        
         Args:
             key: Configuration key (supports dot notation for nested keys)
             default: Default value if key not found
@@ -60,6 +64,12 @@ class ConfigManager:
         Returns:
             Configuration value or default
         """
+        # Check for environment variable overrides
+        if key == 'headless' and os.getenv('BROWSER_HEADLESS'):
+            return os.getenv('BROWSER_HEADLESS', '').lower() in ('true', '1', 'yes')
+        if key == 'base_url' and os.getenv('BASE_URL'):
+            return os.getenv('BASE_URL')
+        
         # Support dot notation for nested keys
         keys = key.split('.')
         value = self._config
