@@ -1,0 +1,7 @@
+# Production Environment Configuration
+base_url: "https://www.example.com"
+browser: "chrome"
+implicit_wait: 10
+explicit_wait: 20
+headless: true
+window_size: "1920x1080"

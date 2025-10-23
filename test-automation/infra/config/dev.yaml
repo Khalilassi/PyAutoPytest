@@ -1,0 +1,7 @@
+# Development Environment Configuration
+base_url: "https://dev.example.com"
+browser: "chrome"
+implicit_wait: 10
+explicit_wait: 20
+headless: false
+window_size: "1920x1080"
