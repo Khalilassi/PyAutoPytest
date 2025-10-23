@@ -143,6 +143,12 @@ test-automation/test-results.log
 report.html
 assets/
 
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+.playwright/
+
 # IDE
 .idea/
 .vscode/
@@ -154,6 +160,6 @@ assets/
 .DS_Store
 Thumbs.db
 
-# Selenium
+# Screenshots (Playwright and legacy Selenium)
 *.png
 screenshots/
