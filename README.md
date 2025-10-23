@@ -1,6 +1,6 @@
 # PyAutoPytest
 
-A Python-based test automation framework using Pytest, Selenium, and Requests for comprehensive UI and API testing.
+A Python-based test automation framework using Pytest, Playwright, and Requests for comprehensive UI and API testing.
 
 ## Features
 
@@ -8,9 +8,11 @@ A Python-based test automation framework using Pytest, Selenium, and Requests fo
 - **Multiple test types**: Support for UI (web), API, and mobile testing (mobile in progress)
 - **Environment configuration**: YAML-based config files for different environments (dev, staging, prod)
 - **Page Object Model**: Clean page object implementation for maintainable UI tests
+- **Playwright integration**: Modern browser automation with auto-waiting and multi-browser support
 - **API testing**: Requests-based API client with session management
 - **Test data generation**: Faker integration for generating realistic test data
 - **Pytest integration**: Full pytest features including markers, fixtures, and parallel execution
+- **CI/CD ready**: GitHub Actions workflow for automated testing
 
 ## Project Structure
 
@@ -69,12 +71,19 @@ git clone https://github.com/Khalilassi/PyAutoPytest.git
 cd PyAutoPytest
 ```
 
-2. Install dependencies:
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Set up environment configuration:
+3. Install Playwright browsers:
+```bash
+python -m playwright install --with-deps
+```
+
+> **Note**: The `--with-deps` flag installs system dependencies required by browsers. On CI/CD systems, this ensures all dependencies are available. For local development, you can use `python -m playwright install` if system dependencies are already installed.
+
+4. Set up environment configuration:
 ```bash
 cp .env.example .env
 # Edit .env with your settings
@@ -87,9 +96,12 @@ cp .env.example .env
 Configure the test environment by creating a `.env` file:
 
 ```env
-ENV=dev          # Environment: dev, staging, or prod
-BROWSER=chrome   # Browser: chrome or firefox
+ENV=dev                    # Environment: dev, staging, or prod
+BROWSER=chrome             # Browser: chrome, firefox, webkit (Playwright)
+BROWSER_HEADLESS=true      # Run browser in headless mode (default: true)
 ```
+
+> **Note**: Playwright runs in headless mode by default for efficiency in CI/CD environments. Set `BROWSER_HEADLESS=false` for local debugging with visible browser.
 
 ### Environment-Specific Configs
 
@@ -101,10 +113,10 @@ Edit YAML files in `test-automation/infra/config/` to configure environment-spec
 
 **Configuration keys:**
 - `base_url`: Application base URL
-- `browser`: Default browser (chrome/firefox)
-- `implicit_wait`: Implicit wait timeout (seconds)
+- `browser`: Default browser (chrome/firefox/webkit for Playwright)
+- `implicit_wait`: Default wait timeout (seconds)
 - `explicit_wait`: Explicit wait timeout (seconds)
-- `headless`: Run browser in headless mode (true/false)
+- `headless`: Run browser in headless mode (true/false) - can be overridden by `BROWSER_HEADLESS` env var
 - `window_size`: Browser window size (e.g., "1920x1080")
 
 ## Running Tests
@@ -146,20 +158,40 @@ pytest --html=report.html --self-contained-html
 ### UI Test Example
 
 ```python
-from infra.base.base_test import BaseTest
-from projects.inspection_portal.pages.login_page import LoginPage
+import pytest
 
-class TestLogin(BaseTest):
-    def test_login(self):
-        # Navigate to page
-        self.navigate_to("/login")
+@pytest.mark.ui
+@pytest.mark.web
+class TestLogin:
+    def test_login(self, navigate_to, framework_page):
+        # Navigate to page using helper fixture
+        navigate_to("/login")
         
-        # Use page object
-        login_page = LoginPage(self.driver)
-        login_page.login("username", "password")
+        # Use Playwright Page API directly
+        framework_page.fill("#username", "test_user")
+        framework_page.fill("#password", "test_pass")
+        framework_page.click("#login-button")
         
         # Assert
-        assert "dashboard" in self.driver.current_url
+        assert "dashboard" in framework_page.url
+```
+
+Or using Page Objects:
+
+```python
+import pytest
+from projects.inspection_portal.pages.login_page import LoginPage
+
+@pytest.mark.ui
+@pytest.mark.web
+class TestLogin:
+    def test_login(self, navigate_to, framework_page):
+        navigate_to("/login")
+        
+        login_page = LoginPage(framework_page)
+        login_page.login("username", "password")
+        
+        assert "dashboard" in framework_page.url
 ```
 
 ### API Test Example
@@ -181,19 +213,26 @@ class TestAuthApi:
 ## Creating New Page Objects
 
 1. Inherit from `BasePage`
-2. Define locators as class attributes
+2. Define selectors as class attributes (CSS selectors or XPath)
 3. Implement page-specific methods
 
 ```python
-from selenium.webdriver.common.by import By
+from playwright.sync_api import Page
 from infra.base.base_page import BasePage
 
 class MyPage(BasePage):
-    # Define locators
-    BUTTON = (By.ID, "my-button")
+    # Define selectors (CSS, XPath, or other Playwright selectors)
+    BUTTON = "#my-button"
+    INPUT_FIELD = "input[name='search']"
+    
+    def __init__(self, page: Page):
+        super().__init__(page)
     
     def click_button(self):
         self.click(self.BUTTON)
+    
+    def enter_search_text(self, text: str):
+        self.fill(self.INPUT_FIELD, text)
 ```
 
 ## TODO Items
@@ -201,10 +240,11 @@ class MyPage(BasePage):
 The following items need to be completed for production use:
 
 ### Infrastructure
+- [x] ~~Add Selenium for browser automation~~ Migrated to Playwright
+- [x] Set up CI/CD integration (GitHub Actions)
+- [ ] Implement screenshot capture on test failure (partially done via pytest-playwright)
+- [ ] Add video recording for test runs (available via pytest-playwright config)
 - [ ] Add Appium integration for mobile testing
-- [ ] Implement screenshot capture on test failure
-- [ ] Add video recording for test runs
-- [ ] Set up CI/CD integration examples
 
 ### Projects
 - [ ] **Update page object selectors**: Replace placeholder selectors with actual application selectors
@@ -231,10 +271,12 @@ The following items need to be completed for production use:
 
 ## Browser Support
 
-- ✅ Chrome (using ChromeDriver via webdriver-manager)
-- ✅ Firefox (using GeckoDriver via webdriver-manager)
-- 🔄 Safari (TODO)
-- 🔄 Edge (TODO)
+- ✅ Chromium (using Playwright)
+- ✅ Firefox (using Playwright)
+- ✅ WebKit/Safari (using Playwright)
+- ✅ Chrome & Edge (Chromium-based, using Playwright)
+
+Playwright provides consistent cross-browser automation with a single API.
 
 ## Contributing
 

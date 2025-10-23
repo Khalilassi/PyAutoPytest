@@ -3,8 +3,7 @@ Login Page Object for Inspection Portal.
 
 Page object for the login page with authentication functionality.
 """
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 from infra.base.base_page import BasePage
 from infra.utils.logger import get_logger
@@ -14,26 +13,27 @@ logger = get_logger(__name__)
 
 class LoginPage(BasePage):
     """
-    Login Page Object for Inspection Portal.
+    Login Page Object for Inspection Portal using Playwright.
     
     TODO: Replace placeholder selectors with actual selectors from the application
+    TODO: Update selectors to use CSS selectors or XPath compatible with Playwright
     """
     
     # Page elements - TODO: Update with actual selectors
-    USERNAME_INPUT = (By.ID, "username")  # TODO: Replace with actual selector
-    PASSWORD_INPUT = (By.ID, "password")  # TODO: Replace with actual selector
-    LOGIN_BUTTON = (By.ID, "login-button")  # TODO: Replace with actual selector
-    ERROR_MESSAGE = (By.CLASS_NAME, "error-message")  # TODO: Replace with actual selector
-    REMEMBER_ME_CHECKBOX = (By.ID, "remember-me")  # TODO: Replace with actual selector
+    USERNAME_INPUT = "#username"  # TODO: Replace with actual selector
+    PASSWORD_INPUT = "#password"  # TODO: Replace with actual selector
+    LOGIN_BUTTON = "#login-button"  # TODO: Replace with actual selector
+    ERROR_MESSAGE = ".error-message"  # TODO: Replace with actual selector
+    REMEMBER_ME_CHECKBOX = "#remember-me"  # TODO: Replace with actual selector
     
-    def __init__(self, driver: WebDriver):
+    def __init__(self, page: Page):
         """
         Initialize Login Page.
         
         Args:
-            driver: WebDriver instance
+            page: Playwright Page instance
         """
-        super().__init__(driver)
+        super().__init__(page)
         logger.info("Initialized LoginPage")
     
     def login(self, username: str, password: str) -> None:
@@ -48,11 +48,11 @@ class LoginPage(BasePage):
         """
         logger.info(f"Logging in with username: {username}")
         
-        # Type username
-        self.type_text(self.USERNAME_INPUT, username)
+        # Fill username
+        self.fill(self.USERNAME_INPUT, username)
         
-        # Type password
-        self.type_text(self.PASSWORD_INPUT, password)
+        # Fill password
+        self.fill(self.PASSWORD_INPUT, password)
         
         # Click login button
         self.click(self.LOGIN_BUTTON)
@@ -66,7 +66,7 @@ class LoginPage(BasePage):
         Returns:
             True if error message is visible
         """
-        return self.is_element_visible(self.ERROR_MESSAGE, timeout=3)
+        return self.is_visible(self.ERROR_MESSAGE, timeout=3000)
     
     def get_error_message(self) -> str:
         """
@@ -94,7 +94,7 @@ class LoginPage(BasePage):
             True if login page elements are visible
         """
         return (
-            self.is_element_visible(self.USERNAME_INPUT, timeout=5) and
-            self.is_element_visible(self.PASSWORD_INPUT, timeout=5) and
-            self.is_element_visible(self.LOGIN_BUTTON, timeout=5)
+            self.is_visible(self.USERNAME_INPUT, timeout=5000) and
+            self.is_visible(self.PASSWORD_INPUT, timeout=5000) and
+            self.is_visible(self.LOGIN_BUTTON, timeout=5000)
         )

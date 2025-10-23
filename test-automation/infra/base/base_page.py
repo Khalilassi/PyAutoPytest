@@ -2,207 +2,136 @@
 Base Page Object class for web UI testing.
 
 Provides common page object functionality and element interaction helpers
-using Selenium WebDriver.
+using Playwright sync API.
 """
-from typing import List, Optional, Tuple
+from typing import Optional
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
+from playwright.sync_api import Page
 
 from infra.utils.logger import get_logger
-from infra.utils.wait_helper import (
-    wait_for_element,
-    wait_for_element_clickable,
-    wait_for_element_visible
-)
 
 logger = get_logger(__name__)
 
 
 class BasePage:
     """
-    Base Page Object class with common element interaction methods.
+    Base Page Object class with common element interaction methods using Playwright.
     
     Provides:
-    - Element finding with explicit waits
-    - Common interactions (click, type, etc.)
+    - Element interaction with auto-waiting
+    - Common interactions (click, fill, etc.)
     - Page validation helpers
     
     Usage:
         class LoginPage(BasePage):
-            USERNAME_INPUT = (By.ID, "username")
-            PASSWORD_INPUT = (By.ID, "password")
+            USERNAME_INPUT = "#username"
+            PASSWORD_INPUT = "#password"
             
             def login(self, username, password):
-                self.type_text(self.USERNAME_INPUT, username)
-                self.type_text(self.PASSWORD_INPUT, password)
+                self.fill(self.USERNAME_INPUT, username)
+                self.fill(self.PASSWORD_INPUT, password)
                 self.click(self.LOGIN_BUTTON)
+    
+    TODO: Update project-specific page objects to use CSS/XPath selectors
+    TODO: Replace Selenium By locators with Playwright selector strings
     """
     
-    def __init__(self, driver: WebDriver):
+    def __init__(self, page: Page):
         """
-        Initialize BasePage with WebDriver instance.
+        Initialize BasePage with Playwright Page instance.
         
         Args:
-            driver: Selenium WebDriver instance
+            page: Playwright sync_api.Page instance
         """
-        self.driver = driver
+        self.page = page
         logger.debug(f"Initialized {self.__class__.__name__}")
     
-    def find_element(
-        self,
-        locator: Tuple[By, str],
-        timeout: int = 10
-    ) -> WebElement:
+    def goto(self, path: str, **kwargs) -> None:
         """
-        Find element with explicit wait.
+        Navigate to URL (absolute or relative to base URL).
         
         Args:
-            locator: Tuple of (By, locator_string)
-            timeout: Maximum wait time in seconds
+            path: Path to navigate to
+            **kwargs: Additional options for page.goto()
+        
+        TODO: Configure base URL in test context/config for relative paths
+        """
+        logger.debug(f"Navigating to: {path}")
+        self.page.goto(path, **kwargs)
+    
+    def click(self, selector: str, timeout: int = 10000) -> None:
+        """
+        Click element using Playwright selector.
+        
+        Playwright automatically waits for element to be actionable.
+        
+        Args:
+            selector: CSS selector, XPath, or other Playwright selector
+            timeout: Maximum wait time in milliseconds (default: 10000)
+        """
+        logger.debug(f"Clicking element: {selector}")
+        self.page.click(selector, timeout=timeout)
+    
+    def fill(self, selector: str, value: str, timeout: int = 10000) -> None:
+        """
+        Fill input element with value.
+        
+        Playwright automatically waits for element and clears before filling.
+        
+        Args:
+            selector: CSS selector, XPath, or other Playwright selector
+            value: Text to fill
+            timeout: Maximum wait time in milliseconds (default: 10000)
+        """
+        logger.debug(f"Filling element: {selector}")  # Don't log the value for security
+        self.page.fill(selector, value, timeout=timeout)
+    
+    def get_text(self, selector: str, timeout: int = 10000) -> str:
+        """
+        Get text content from element.
+        
+        Args:
+            selector: CSS selector, XPath, or other Playwright selector
+            timeout: Maximum wait time in milliseconds (default: 10000)
             
         Returns:
-            WebElement when found
+            Element text content
         """
-        logger.debug(f"Finding element: {locator}")
-        return wait_for_element(self.driver, locator, timeout)
+        logger.debug(f"Getting text from element: {selector}")
+        return self.page.inner_text(selector, timeout=timeout)
     
-    def find_elements(
-        self,
-        locator: Tuple[By, str],
-        timeout: int = 10
-    ) -> List[WebElement]:
-        """
-        Find multiple elements with explicit wait.
-        
-        Args:
-            locator: Tuple of (By, locator_string)
-            timeout: Maximum wait time in seconds
-            
-        Returns:
-            List of WebElements
-        """
-        logger.debug(f"Finding elements: {locator}")
-        # Wait for at least one element to be present
-        wait_for_element(self.driver, locator, timeout)
-        return self.driver.find_elements(*locator)
-    
-    def click(self, locator: Tuple[By, str], timeout: int = 10) -> None:
-        """
-        Click element after waiting for it to be clickable.
-        
-        Args:
-            locator: Tuple of (By, locator_string)
-            timeout: Maximum wait time in seconds
-        """
-        logger.debug(f"Clicking element: {locator}")
-        element = wait_for_element_clickable(self.driver, locator, timeout)
-        element.click()
-    
-    def type_text(
-        self,
-        locator: Tuple[By, str],
-        text: str,
-        clear_first: bool = True,
-        timeout: int = 10
-    ) -> None:
-        """
-        Type text into element after waiting for it to be visible.
-        
-        Args:
-            locator: Tuple of (By, locator_string)
-            text: Text to type
-            clear_first: Clear existing text before typing
-            timeout: Maximum wait time in seconds
-        """
-        logger.debug(f"Typing text into element: {locator}")
-        element = wait_for_element_visible(self.driver, locator, timeout)
-        if clear_first:
-            element.clear()
-        element.send_keys(text)
-    
-    def get_text(
-        self,
-        locator: Tuple[By, str],
-        timeout: int = 10
-    ) -> str:
-        """
-        Get text from element.
-        
-        Args:
-            locator: Tuple of (By, locator_string)
-            timeout: Maximum wait time in seconds
-            
-        Returns:
-            Element text
-        """
-        logger.debug(f"Getting text from element: {locator}")
-        element = wait_for_element_visible(self.driver, locator, timeout)
-        return element.text
-    
-    def get_attribute(
-        self,
-        locator: Tuple[By, str],
-        attribute: str,
-        timeout: int = 10
-    ) -> Optional[str]:
-        """
-        Get attribute value from element.
-        
-        Args:
-            locator: Tuple of (By, locator_string)
-            attribute: Attribute name
-            timeout: Maximum wait time in seconds
-            
-        Returns:
-            Attribute value or None
-        """
-        logger.debug(f"Getting attribute '{attribute}' from element: {locator}")
-        element = wait_for_element(self.driver, locator, timeout)
-        return element.get_attribute(attribute)
-    
-    def is_element_visible(
-        self,
-        locator: Tuple[By, str],
-        timeout: int = 5
-    ) -> bool:
+    def is_visible(self, selector: str, timeout: int = 5000) -> bool:
         """
         Check if element is visible on page.
         
         Args:
-            locator: Tuple of (By, locator_string)
-            timeout: Maximum wait time in seconds
+            selector: CSS selector, XPath, or other Playwright selector
+            timeout: Maximum wait time in milliseconds (default: 5000)
             
         Returns:
             True if visible, False otherwise
         """
         try:
-            wait_for_element_visible(self.driver, locator, timeout)
+            self.page.wait_for_selector(selector, state="visible", timeout=timeout)
             return True
         except Exception:
             return False
     
-    def is_element_present(
-        self,
-        locator: Tuple[By, str],
-        timeout: int = 5
-    ) -> bool:
+    def get_attribute(self, selector: str, attribute: str, timeout: int = 10000) -> Optional[str]:
         """
-        Check if element is present in DOM.
+        Get attribute value from element.
         
         Args:
-            locator: Tuple of (By, locator_string)
-            timeout: Maximum wait time in seconds
+            selector: CSS selector, XPath, or other Playwright selector
+            attribute: Attribute name
+            timeout: Maximum wait time in milliseconds (default: 10000)
             
         Returns:
-            True if present, False otherwise
+            Attribute value or None
         """
-        try:
-            wait_for_element(self.driver, locator, timeout)
-            return True
-        except Exception:
-            return False
+        logger.debug(f"Getting attribute '{attribute}' from element: {selector}")
+        locator = self.page.locator(selector)
+        return locator.get_attribute(attribute, timeout=timeout)
     
     def get_page_title(self) -> str:
         """
@@ -211,7 +140,7 @@ class BasePage:
         Returns:
             Page title
         """
-        return self.driver.title
+        return self.page.title()
     
     def get_current_url(self) -> str:
         """
@@ -220,18 +149,16 @@ class BasePage:
         Returns:
             Current URL
         """
-        return self.driver.current_url
+        return self.page.url
     
-    def wait_for_page_load(self, timeout: int = 30) -> None:
+    def wait_for_selector(self, selector: str, timeout: int = 30000, state: str = "visible") -> None:
         """
-        Wait for page to finish loading.
+        Wait for selector to reach specified state.
         
         Args:
-            timeout: Maximum wait time in seconds
+            selector: CSS selector, XPath, or other Playwright selector
+            timeout: Maximum wait time in milliseconds (default: 30000)
+            state: State to wait for: 'attached', 'detached', 'visible', 'hidden'
         """
-        from selenium.webdriver.support.ui import WebDriverWait
-        
-        WebDriverWait(self.driver, timeout).until(
-            lambda d: d.execute_script("return document.readyState") == "complete"
-        )
-        logger.debug("Page load complete")
+        logger.debug(f"Waiting for selector: {selector} to be {state}")
+        self.page.wait_for_selector(selector, timeout=timeout, state=state)

@@ -3,8 +3,7 @@ Dashboard Page Object for Inspection Portal.
 
 Page object for the main dashboard page after login.
 """
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 from infra.base.base_page import BasePage
 from infra.utils.logger import get_logger
@@ -14,27 +13,28 @@ logger = get_logger(__name__)
 
 class DashboardPage(BasePage):
     """
-    Dashboard Page Object for Inspection Portal.
+    Dashboard Page Object for Inspection Portal using Playwright.
     
     TODO: Replace placeholder selectors with actual selectors from the application
+    TODO: Update selectors to use CSS selectors or XPath compatible with Playwright
     """
     
     # Page elements - TODO: Update with actual selectors
-    WELCOME_MESSAGE = (By.CLASS_NAME, "welcome-message")  # TODO: Replace with actual selector
-    NEW_INSPECTION_BUTTON = (By.ID, "new-inspection")  # TODO: Replace with actual selector
-    INSPECTIONS_TABLE = (By.ID, "inspections-table")  # TODO: Replace with actual selector
-    USER_MENU = (By.ID, "user-menu")  # TODO: Replace with actual selector
-    LOGOUT_LINK = (By.ID, "logout")  # TODO: Replace with actual selector
-    SEARCH_INPUT = (By.ID, "search-inspections")  # TODO: Replace with actual selector
+    WELCOME_MESSAGE = ".welcome-message"  # TODO: Replace with actual selector
+    NEW_INSPECTION_BUTTON = "#new-inspection"  # TODO: Replace with actual selector
+    INSPECTIONS_TABLE = "#inspections-table"  # TODO: Replace with actual selector
+    USER_MENU = "#user-menu"  # TODO: Replace with actual selector
+    LOGOUT_LINK = "#logout"  # TODO: Replace with actual selector
+    SEARCH_INPUT = "#search-inspections"  # TODO: Replace with actual selector
     
-    def __init__(self, driver: WebDriver):
+    def __init__(self, page: Page):
         """
         Initialize Dashboard Page.
         
         Args:
-            driver: WebDriver instance
+            page: Playwright Page instance
         """
-        super().__init__(driver)
+        super().__init__(page)
         logger.info("Initialized DashboardPage")
     
     def is_dashboard_loaded(self) -> bool:
@@ -44,7 +44,7 @@ class DashboardPage(BasePage):
         Returns:
             True if dashboard elements are visible
         """
-        return self.is_element_visible(self.WELCOME_MESSAGE, timeout=10)
+        return self.is_visible(self.WELCOME_MESSAGE, timeout=10000)
     
     def get_welcome_message(self) -> str:
         """
@@ -73,7 +73,7 @@ class DashboardPage(BasePage):
         Returns:
             True if table is visible
         """
-        return self.is_element_visible(self.INSPECTIONS_TABLE)
+        return self.is_visible(self.INSPECTIONS_TABLE)
     
     def search_inspections(self, search_term: str) -> None:
         """
@@ -85,7 +85,7 @@ class DashboardPage(BasePage):
             search_term: Term to search for
         """
         logger.info(f"Searching for inspections: {search_term}")
-        self.type_text(self.SEARCH_INPUT, search_term)
+        self.fill(self.SEARCH_INPUT, search_term)
     
     def logout(self) -> None:
         """

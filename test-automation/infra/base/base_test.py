@@ -1,37 +1,61 @@
 """
 Base Test class for pytest test cases.
 
-Provides setup and teardown with driver management and test context.
-All test classes should inherit from this base class.
+⚠️ DEPRECATED: This module is deprecated for web UI testing.
+Use pytest-playwright fixtures instead (page, framework_page, navigate_to).
+
+For API tests, this base class is not needed - use fixtures directly.
+
+Migration guide for UI tests:
+- Old: class TestLogin(BaseTest):
+- New: class TestLogin: (with pytest fixtures)
+
+Example:
+    @pytest.mark.ui
+    @pytest.mark.web
+    class TestLogin:
+        def test_example(self, navigate_to, framework_page):
+            navigate_to("/login")
+            framework_page.click("#button")
 """
+import warnings
 from typing import Optional
 
 import pytest
-from selenium.webdriver.remote.webdriver import WebDriver
 
 from infra.core.config_manager import get_config
-from infra.core.driver_manager import DriverManager
 from infra.core.test_context import TestContext
 from infra.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Deprecation warning message
+DEPRECATION_MSG = (
+    "BaseTest is deprecated for web UI testing. "
+    "Use pytest-playwright fixtures (page, framework_page, navigate_to) instead. "
+    "See README.md for migration examples."
+)
+
 
 class BaseTest:
     """
-    Base test class with driver management and test context setup.
+    DEPRECATED: Base test class with driver management and test context setup.
     
-    Provides:
-    - Automatic driver initialization and cleanup
-    - Test context with driver and configuration
-    - Easy access to driver via self.driver
-    - Configuration via self.context.config
+    Use pytest-playwright fixtures instead for new tests.
+    This class is kept for backward compatibility but will be removed in future versions.
     
-    Usage:
+    Migration guide:
+        # Old approach:
         class TestLogin(BaseTest):
-            def test_successful_login(self):
-                self.driver.get("https://example.com")
-                assert "Example" in self.driver.title
+            def test_example(self):
+                self.navigate_to("/login")
+                self.driver.get("...")
+        
+        # New approach:
+        class TestLogin:
+            def test_example(self, navigate_to, framework_page):
+                navigate_to("/login")
+                framework_page.click("#button")
     """
     
     # Class-level configuration
@@ -40,53 +64,39 @@ class BaseTest:
     
     def setup_method(self, method):
         """
-        Setup before each test method.
+        DEPRECATED: Setup before each test method.
         
-        Initializes driver manager, creates driver, and sets up test context.
+        Raises warning about deprecation.
         
         Args:
             method: Test method being executed
         """
-        logger.info(f"Setting up test: {method.__name__}")
+        warnings.warn(DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
+        logger.warning(f"BaseTest is deprecated. Migrate test to use pytest-playwright fixtures: {method.__name__}")
         
-        # Load configuration
+        # Minimal setup for backward compatibility
         config_manager = get_config()
         config = config_manager.config
         
-        # Override config with class-level settings if provided
-        if self.browser:
-            config['browser'] = self.browser
-        if self.headless is not None:
-            config['headless'] = self.headless
-        
-        # Create driver manager and start driver
-        self.driver_manager = DriverManager(config)
-        self.driver: WebDriver = self.driver_manager.start_driver()
-        
-        # Create test context
+        # Create a minimal test context without driver
         self.context = TestContext(
-            driver=self.driver,
+            driver=None,
             base_url=config.get('base_url'),
             config=config
         )
         
-        logger.info(f"Test setup complete: {method.__name__}")
+        # Set driver to None to trigger errors if used
+        self.driver = None
+        self.driver_manager = None
     
     def teardown_method(self, method):
         """
-        Cleanup after each test method.
-        
-        Stops driver and cleans up resources.
+        DEPRECATED: Cleanup after each test method.
         
         Args:
             method: Test method that was executed
         """
-        logger.info(f"Tearing down test: {method.__name__}")
-        
-        if hasattr(self, 'driver_manager'):
-            self.driver_manager.stop_driver()
-        
-        logger.info(f"Test teardown complete: {method.__name__}")
+        pass
     
     def get_base_url(self) -> str:
         """
@@ -99,16 +109,12 @@ class BaseTest:
     
     def navigate_to(self, path: str = "") -> None:
         """
-        Navigate to URL relative to base URL.
+        DEPRECATED: Navigate to URL relative to base URL.
         
-        Args:
-            path: Path to append to base URL (can be absolute URL)
+        Raises:
+            NotImplementedError: Always raised to guide users to new approach
         """
-        if path.startswith('http://') or path.startswith('https://'):
-            url = path
-        else:
-            base_url = self.get_base_url()
-            url = f"{base_url.rstrip('/')}/{path.lstrip('/')}" if path else base_url
-        
-        logger.info(f"Navigating to: {url}")
-        self.driver.get(url)
+        raise NotImplementedError(
+            "BaseTest.navigate_to() is deprecated. "
+            "Use pytest fixtures: def test_example(navigate_to, framework_page): ..."
+        )
