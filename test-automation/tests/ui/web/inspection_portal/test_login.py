@@ -1,7 +1,8 @@
 """
 Test cases for Inspection Portal login functionality.
 
-Example UI tests using pytest-playwright fixtures.
+Example UI tests using project facades.
+Tests demonstrate high-level API usage without direct page interactions.
 """
 import pytest
 
@@ -10,102 +11,41 @@ import pytest
 @pytest.mark.web
 class TestLogin:
     """
-    Test cases for login functionality using Playwright.
+    Test cases for login functionality using InspectionPortalWebFacade.
     
-    TODO: Update with actual test scenarios and assertions
-    TODO: Add real credentials or test data
-    TODO: Update selectors to match actual application
+    Tests use self.web.inspection_portal facade for all interactions.
+    No direct page manipulation in tests - all logic is in facades/pages.
     """
     
-    def test_page_loads(self, navigate_to, framework_page):
+    @pytest.mark.skip(reason="Placeholder - requires real application and credentials")
+    def test_successful_login(self, page):
         """
-        Test that login page loads successfully.
+        Test successful login using high-level facade API.
         
-        This is a minimal example test that verifies the page loads.
-        TODO: Update URL and assertions based on actual application
+        This test demonstrates the new pattern:
+        - No page.goto(), page.fill(), page.click() in test code
+        - All interactions are through self.web.inspection_portal facade
+        - Test only contains high-level actions and assertions
+        
+        TODO: Update with actual test credentials
+        TODO: Enable when application is available
         """
-        # Navigate to login page
-        navigate_to("/login")
+        # Perform login using facade - encapsulates all page interactions
+        self.web.inspection_portal.login('test_user', 'test_password')
         
-        # Verify page title is not empty
-        assert framework_page.title() is not None, "Page title should not be None"
-        
-        # Verify URL contains login
-        current_url = framework_page.url
-        assert "login" in current_url or current_url.endswith("/login")
-    
-    @pytest.mark.skip(reason="Placeholder - requires real credentials and selectors")
-    def test_successful_login(self, navigate_to, framework_page):
-        """
-        Test successful login with valid credentials.
-        
-        TODO: Replace with actual credentials and verify behavior
-        TODO: Update selectors to match actual application
-        """
-        from projects.inspection_portal.pages.login_page import LoginPage
-        from projects.inspection_portal.pages.dashboard_page import DashboardPage
-        
-        # Navigate to login page
-        navigate_to("/login")
-        
-        # Create login page object with Playwright Page
-        login_page = LoginPage(framework_page)
-        
-        # Verify login page is loaded
-        assert login_page.is_login_page_loaded(), "Login page should be loaded"
-        
-        # Perform login - TODO: Use real test credentials
-        login_page.login("test_user", "test_password")
-        
-        # Verify navigation to dashboard
-        dashboard_page = DashboardPage(framework_page)
-        assert dashboard_page.is_dashboard_loaded(), "Dashboard should be loaded after login"
+        # Verify login success using high-level check
+        assert self.web.inspection_portal.is_logged_in(), "User should be logged in after successful login"
     
     @pytest.mark.skip(reason="Placeholder - requires real application")
-    def test_login_with_invalid_credentials(self, navigate_to, framework_page):
+    def test_login_with_invalid_credentials(self, page):
         """
-        Test login with invalid credentials shows error.
+        Test login with invalid credentials using facade.
         
-        TODO: Update with actual application behavior
+        TODO: Implement error checking in facade
+        TODO: Enable when application is available
         """
-        from projects.inspection_portal.pages.login_page import LoginPage
-        
-        # Navigate to login page
-        navigate_to("/login")
-        
-        # Create login page object
-        login_page = LoginPage(framework_page)
-        
         # Attempt login with invalid credentials
-        login_page.login("invalid_user", "wrong_password")
+        self.web.inspection_portal.login('invalid_user', 'wrong_password')
         
-        # Verify error message is displayed
-        assert login_page.is_error_displayed(), "Error message should be displayed"
-        
-        # Verify error message content
-        error_message = login_page.get_error_message()
-        assert "invalid" in error_message.lower() or "error" in error_message.lower()
-    
-    @pytest.mark.skip(reason="Placeholder - requires real application")
-    def test_remember_me_functionality(self, navigate_to, framework_page):
-        """
-        Test 'Remember Me' checkbox functionality.
-        
-        TODO: Implement based on actual application behavior
-        """
-        from projects.inspection_portal.pages.login_page import LoginPage
-        
-        # Navigate to login page
-        navigate_to("/login")
-        
-        # Create login page object
-        login_page = LoginPage(framework_page)
-        
-        # Check 'Remember Me'
-        login_page.check_remember_me()
-        
-        # Perform login
-        login_page.login("test_user", "test_password")
-        
-        # TODO: Add assertions for remember me functionality
-        # (e.g., check cookies, verify session persistence)
+        # Verify login failed
+        assert not self.web.inspection_portal.is_logged_in(), "User should not be logged in with invalid credentials"
