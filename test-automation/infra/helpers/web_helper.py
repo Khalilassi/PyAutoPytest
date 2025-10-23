@@ -36,7 +36,7 @@ def type_text(page: Page, selector: str, text: str, timeout: int = 10000) -> Non
         text: Text to type
         timeout: Maximum wait time in milliseconds (default: 10000)
     """
-    logger.debug(f"Typing text into element: {selector}")
+    logger.debug(f"Typing text into element: {selector}")  # Don't log text for security
     page.fill(selector, text, timeout=timeout)
 
 

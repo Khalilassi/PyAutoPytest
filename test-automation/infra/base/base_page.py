@@ -83,7 +83,7 @@ class BasePage:
             value: Text to fill
             timeout: Maximum wait time in milliseconds (default: 10000)
         """
-        logger.debug(f"Filling element: {selector}")
+        logger.debug(f"Filling element: {selector}")  # Don't log the value for security
         self.page.fill(selector, value, timeout=timeout)
     
     def get_text(self, selector: str, timeout: int = 10000) -> str:
