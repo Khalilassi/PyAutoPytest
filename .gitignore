@@ -163,3 +163,7 @@ Thumbs.db
 # Screenshots (Playwright and legacy Selenium)
 *.png
 screenshots/
+
+# Gold news bot dedupe state
+state/
+gold_news_bot/state/

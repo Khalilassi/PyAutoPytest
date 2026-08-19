@@ -1,5 +1,8 @@
 # Gold & Forex News Bot
 
+> بيعيش جوه ريبو PyAutoPytest، بس مستقل تمامًا عن إطار الاختبارات:
+> الكود كله في `gold_news_bot/` والتشغيل من `.github/workflows/news-bot.yml`.
+
 بوت تيليجرام بيقرأ 5 مصادر RSS (Investing ×2، FXStreet، Kitco، Reuters عن طريق Google News)،
 بيفلتر الأخبار اللي فيها **ذهب / الفيدرالي / تضخم / NFP**، وبيبعتها على تيليجرام **من غير تكرار**.
 بيشتغل مجانًا على GitHub Actions كل 15 دقيقة — من غير سيرفر.
@@ -35,29 +38,29 @@
 ## تشغيل محلي (للتجربة)
 
 ```bash
-pip install -r requirements.txt
+pip install -r gold_news_bot/requirements.txt
 
 # معاينة من غير إرسال
-python bot.py --dry-run
+python gold_news_bot/bot.py --dry-run
 
 # إرسال فعلي
 export TELEGRAM_BOT_TOKEN="..."
 export TELEGRAM_CHAT_ID="..."
-python bot.py
+python gold_news_bot/bot.py
 ```
 
 ## الاختبارات
 
 ```bash
-pip install -r requirements-dev.txt
-pytest
+pip install -r gold_news_bot/requirements.txt pytest
+pytest gold_news_bot/tests
 ```
 
 ---
 
 ## التعديل على المصادر والكلمات
 
-كل حاجة في `feeds.yml` — مش محتاج تفتح الكود:
+كل حاجة في `gold_news_bot/feeds.yml` — مش محتاج تفتح الكود:
 
 ```yaml
 feeds:
@@ -83,8 +86,8 @@ keywords:
 | `MAX_AGE_HOURS` | `6` | تجاهل أي خبر أقدم من كده |
 | `MAX_ITEMS_PER_RUN` | `10` | أقصى عدد رسايل في التشغيلة الواحدة (حماية من الفيضان) |
 | `STATE_TTL_DAYS` | `7` | مدة تذكّر الخبر عشان مايتبعتش تاني |
-| `FEEDS_FILE` | `feeds.yml` | مسار ملف المصادر |
-| `STATE_FILE` | `state/seen.json` | مسار ملف الحالة |
+| `FEEDS_FILE` | `gold_news_bot/feeds.yml` | مسار ملف المصادر |
+| `STATE_FILE` | `state/seen.json` (من الـ workflow) | مسار ملف الحالة |
 
 ## إزاي بيمنع التكرار
 
