@@ -1,0 +1,46 @@
+# مصادر الأخبار + كلمات الفلترة
+# لو مصدر وقع أو غيّر رابطه، عدّل هنا بس — الكود مش محتاج تعديل.
+
+feeds:
+  - name: "Investing – Commodities"
+    url: "https://www.investing.com/rss/news_11.rss"
+  - name: "Investing – Economy"
+    url: "https://www.investing.com/rss/news_25.rss"
+  - name: "FXStreet"
+    url: "https://www.fxstreet.com/rss/news"
+  - name: "Kitco News"
+    url: "https://www.kitco.com/rss/KitcoNews.xml"
+  # رويترز قفلت الـ RSS العام، فبنجيب أخبارها عن طريق Google News
+  - name: "Reuters (via Google News)"
+    url: "https://news.google.com/rss/search?q=(gold+OR+%22federal+reserve%22+OR+inflation)+site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en"
+
+# أي خبر فيه كلمة من دول بيتبعت. المقارنة case-insensitive.
+keywords:
+  # ذهب
+  - gold
+  - xau
+  - bullion
+  - ذهب
+  # الفيدرالي والفائدة
+  - fed
+  - federal reserve
+  - fomc
+  - powell
+  - interest rate
+  - rate cut
+  - rate hike
+  - الفيدرالي
+  - الفائدة
+  # تضخم
+  - inflation
+  - cpi
+  - ppi
+  - pce
+  - تضخم
+  # سوق العمل الأمريكي
+  - nfp
+  - non-farm
+  - nonfarm
+  - payrolls
+  - jobless claims
+  - الوظائف
