@@ -8,8 +8,9 @@ feeds:
     url: "https://www.investing.com/rss/news_25.rss"
   - name: "FXStreet"
     url: "https://www.fxstreet.com/rss/news"
-  - name: "Kitco News"
-    url: "https://www.kitco.com/rss/KitcoNews.xml"
+  # لينك Kitco المباشر رجّع 404 (اتغير)، فبنجيبه عن طريق Google News زي رويترز
+  - name: "Kitco (via Google News)"
+    url: "https://news.google.com/rss/search?q=site:kitco.com+(gold+OR+silver+OR+fed)+when:1d&hl=en-US&gl=US&ceid=US:en"
   # رويترز قفلت الـ RSS العام، فبنجيب أخبارها عن طريق Google News
   - name: "Reuters (via Google News)"
     url: "https://news.google.com/rss/search?q=(gold+OR+%22federal+reserve%22+OR+inflation)+site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en"

@@ -58,6 +58,17 @@ jobs:
         run: |
           python gold_news_bot/bot.py ${{ inputs.dry_run && '--dry-run' || '' }}
 
+      # تنبيهات التقويم الاقتصادي (قبل الخبر بنص ساعة تقريبًا).
+      # always() عشان لو بوت الأخبار وقع، التنبيهات تفضل شغالة.
+      - name: Run calendar bot
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CALENDAR_STATE_FILE: state/calendar.json
+        run: |
+          python gold_news_bot/calendar_bot.py ${{ inputs.dry_run && '--dry-run' || '' }}
+
       # مفاتيح الكاش immutable، فبنحفظ بمفتاح جديد كل run
       - name: Save state
         if: always()
