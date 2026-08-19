@@ -1,0 +1,41 @@
+# التقويم الاقتصادي: مصدر البيانات وقواعد التنبيه
+
+# تقويم ForexFactory الأسبوعي (JSON مجاني، من غير مفتاح)
+source_url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+
+# ابعت تنبيه قبل الخبر بكام دقيقة (بيتبعت في أقرب تشغيلة داخل النافذة دي)
+lead_minutes: 35
+
+# مستويات التأثير اللي تستاهل تنبيه
+impacts:
+  - High
+
+# العملات اللي تهمّك (USD هي اللي بتحرّك الذهب)
+currencies:
+  - USD
+  - EUR
+
+# الأدوات الأكتر تأثرًا بكل عملة — بتظهر في الرسالة
+instruments:
+  USD: ["XAUUSD", "EURUSD", "USDJPY", "DXY"]
+  EUR: ["EURUSD", "EURJPY", "EURGBP"]
+  GBP: ["GBPUSD", "EURGBP"]
+  JPY: ["USDJPY", "XAUUSD"]
+  CHF: ["USDCHF", "XAUUSD"]
+  CAD: ["USDCAD", "WTI"]
+  AUD: ["AUDUSD", "XAUUSD"]
+  NZD: ["NZDUSD"]
+  CNY: ["AUDUSD", "XAUUSD"]
+
+# أحداث معيّنة ليها وزن خاص على الذهب — بيتزاد عليها سطر تنبيه
+gold_movers:
+  - cpi
+  - core cpi
+  - non-farm
+  - nonfarm
+  - fomc
+  - federal funds
+  - pce
+  - ppi
+  - unemployment rate
+  - powell
