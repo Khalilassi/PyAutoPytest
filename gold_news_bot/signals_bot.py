@@ -34,13 +34,17 @@ from analysis import Snapshot, Ticket
 from bot import load_state, save_state, send_photo
 from card import render_card
 from localtime import TZ_LABEL, format_datetime
-from market_data import MarketDataError, fetch_candles
+from market_data import MarketDataError, fetch_first_available
 
 LOGGER = logging.getLogger("signals_bot")
 
 DEFAULT_CONFIG = Path(__file__).with_name("signals.yml")
 DEFAULT_STATE_FILE = Path("state/signals.json")
 DEFAULT_CARD_DIR = Path("cards")
+
+# Futures trade at a premium to spot, so a card fed by one must say so — the
+# number is right for the instrument and wrong for the platform you trade on.
+FUTURES_SOURCES = {"GC=F", "SI=F", "CL=F", "NQ=F", "ES=F"}
 
 SIDE_LABELS = {"BUY": "شراء", "SELL": "بيع", "WAIT": "انتظار"}
 TREND_LABELS = {"UP": "صاعد", "DOWN": "هابط", "FLAT": "عرضي", "UNKNOWN": "غير محدد"}
@@ -62,7 +66,13 @@ def build_caption(snapshot: Snapshot, ticket: Ticket | None, now: datetime) -> s
         f"الاتجاه: {TREND_LABELS.get(snapshot.trend, snapshot.trend)}"
         + (f" · RSI {snapshot.rsi:.0f}" if snapshot.rsi is not None else ""),
         f"\U0001f552 آخر شمعة: {format_datetime(snapshot.candle_time)} {TZ_LABEL} — <b>{age}</b>",
+        f"\U0001f4e1 المصدر: <code>{snapshot.source}</code>",
     ]
+
+    if snapshot.source in FUTURES_SOURCES:
+        lines.append(
+            "\u26a0\ufe0f ده سعر <b>عقود آجلة</b> مش سبوت — بيفرق عن منصتك بعشرات الدولارات."
+        )
 
     if ticket:
         lines += [
@@ -80,15 +90,16 @@ def build_caption(snapshot: Snapshot, ticket: Ticket | None, now: datetime) -> s
 
 def state_fingerprint(snapshot: Snapshot) -> str:
     """What must change before the same instrument is worth re-sending."""
-    return f"{snapshot.trend}|{snapshot.bias}|{snapshot.candle_time.isoformat()}"
+    return f"{snapshot.source}|{snapshot.trend}|{snapshot.bias}|{snapshot.candle_time.isoformat()}"
 
 
 def process_instrument(instrument: dict, config: dict, now: datetime, card_dir: Path):
     """Returns (snapshot, ticket, card path) or None when data is unusable."""
-    name = instrument.get("name") or instrument["symbol"]
+    sources = instrument.get("sources") or [instrument["symbol"]]
+    name = instrument.get("name") or sources[0]
     try:
-        candles = fetch_candles(
-            instrument["symbol"],
+        source, candles = fetch_first_available(
+            sources,
             interval=config.get("interval", "15m"),
             lookback=config.get("lookback", "1mo"),
         )
@@ -96,8 +107,11 @@ def process_instrument(instrument: dict, config: dict, now: datetime, card_dir: 
         LOGGER.warning("skipping %s: %s", name, exc)
         return None
 
+    if source != sources[0]:
+        LOGGER.warning("%s is on the fallback source %s, prices will differ from %s", name, source, sources[0])
+
     rules = config.get("rules", {})
-    snapshot = analysis.build_snapshot(candles, name, int(instrument.get("digits", 2)), rules)
+    snapshot = analysis.build_snapshot(candles, name, int(instrument.get("digits", 2)), rules, source=source)
     ticket = analysis.build_ticket(
         snapshot, rules, config.get("risk", {}), float(instrument.get("value_per_point", 0))
     )

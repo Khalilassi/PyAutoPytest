@@ -36,6 +36,7 @@ class Snapshot:
     candle_time: datetime
     trend: str
     bias: str
+    source: str = ""
 
     def price(self, value: float | None) -> str:
         return "—" if value is None else f"{value:,.{self.digits}f}"
@@ -51,7 +52,7 @@ class Ticket:
     risk_amount: float
 
 
-def build_snapshot(candles: list[Candle], name: str, digits: int, rules: dict) -> Snapshot:
+def build_snapshot(candles: list[Candle], name: str, digits: int, rules: dict, source: str = "") -> Snapshot:
     """Read the current technical state off the candles."""
     values = indicators.closes(candles)
     last = values[-1]
@@ -82,6 +83,7 @@ def build_snapshot(candles: list[Candle], name: str, digits: int, rules: dict) -
         candle_time=candles[-1].when,
         trend=trend,
         bias=bias,
+        source=source,
     )
 
 
