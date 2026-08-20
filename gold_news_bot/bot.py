@@ -36,6 +36,8 @@ import feedparser
 import requests
 import yaml
 
+from localtime import TZ_LABEL, format_datetime
+
 LOGGER = logging.getLogger("gold_news_bot")
 
 DEFAULT_FEEDS_FILE = Path(__file__).with_name("feeds.yml")
@@ -79,7 +81,7 @@ class NewsItem:
         parts = [f"\U0001f7e1 <b>{html.escape(self.title)}</b>"]
         meta = html.escape(self.source)
         if self.published:
-            meta += " · " + self.published.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            meta += f" · {format_datetime(self.published)} {TZ_LABEL}"
         parts.append(meta)
         parts.append(html.escape(self.link))
         return "\n".join(parts)

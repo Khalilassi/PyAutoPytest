@@ -6,9 +6,15 @@ source_url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 # ابعت تنبيه قبل الخبر بكام دقيقة (بيتبعت في أقرب تشغيلة داخل النافذة دي)
 lead_minutes: 35
 
-# مستويات التأثير اللي تستاهل تنبيه
+# مستويات التأثير اللي تستاهل تنبيه فردي قبل الخبر
 impacts:
   - High
+
+# الملخص اليومي (11:00 صباحًا بتوقيت الرياض): كام ساعة جاية وإيه مستويات التأثير
+digest_hours: 24
+digest_impacts:
+  - High
+  - Medium
 
 # العملات اللي تهمّك (USD هي اللي بتحرّك الذهب)
 currencies:
