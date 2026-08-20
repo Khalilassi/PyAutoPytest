@@ -92,3 +92,61 @@ class TestSourceFallback:
     def test_no_sources_raises(self):
         with pytest.raises(market_data.MarketDataError):
             market_data.fetch_first_available([])
+
+
+class TestTwelveData:
+    def rows(self):
+        return {
+            "meta": {"symbol": "XAU/USD", "interval": "15min"},
+            "status": "ok",
+            "values": [
+                {"datetime": "2026-08-20 10:15:00", "open": "4479.5", "high": "4483.0", "low": "4478.1", "close": "4480.2"},
+                {"datetime": "2026-08-20 10:00:00", "open": "4475.0", "high": "4480.0", "low": "4474.0", "close": "4479.4"},
+            ],
+        }
+
+    def test_orders_oldest_first(self):
+        candles = market_data.parse_twelvedata(self.rows())
+        assert [c.close for c in candles] == [4479.4, 4480.2]
+
+    def test_timestamps_are_utc(self):
+        candles = market_data.parse_twelvedata(self.rows())
+        assert candles[-1].when.tzinfo == timezone.utc
+        assert candles[-1].when.hour == 10 and candles[-1].when.minute == 15
+
+    def test_provider_error_raises(self):
+        with pytest.raises(market_data.MarketDataError):
+            market_data.parse_twelvedata({"status": "error", "message": "invalid api key"})
+
+    def test_empty_values_raise(self):
+        with pytest.raises(market_data.MarketDataError):
+            market_data.parse_twelvedata({"status": "ok", "values": []})
+
+    def test_malformed_rows_are_skipped(self):
+        payload = self.rows()
+        payload["values"].append({"datetime": "nope", "open": "x"})
+        assert len(market_data.parse_twelvedata(payload)) == 2
+
+    def test_all_rows_malformed_raises(self):
+        with pytest.raises(market_data.MarketDataError):
+            market_data.parse_twelvedata({"status": "ok", "values": [{"datetime": "nope"}]})
+
+    def test_missing_key_is_reported_not_silently_skipped(self, monkeypatch):
+        monkeypatch.delenv("TWELVEDATA_API_KEY", raising=False)
+        with pytest.raises(market_data.MarketDataError, match="TWELVEDATA_API_KEY"):
+            market_data.fetch_twelvedata("XAU/USD", "15m")
+
+    def test_prefix_routes_to_twelvedata(self, monkeypatch):
+        seen = {}
+
+        def fake(symbol, interval, size=500):
+            seen["symbol"] = symbol
+            seen["interval"] = interval
+            return ["candle"]
+
+        monkeypatch.setattr(market_data, "fetch_twelvedata", fake)
+        assert market_data.fetch_candles("td:XAU/USD", interval="15m") == ["candle"]
+        assert seen == {"symbol": "XAU/USD", "interval": "15m"}
+
+    def test_interval_is_translated_to_provider_spelling(self):
+        assert market_data.TWELVEDATA_INTERVALS["15m"] == "15min"
