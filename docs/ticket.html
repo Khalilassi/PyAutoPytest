@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>تكيت الصفقة</title>
+<style>
+  :root{
+    --bg:#11151c; --card:#171d27; --line:#242c3a; --fg:#e8eaed; --muted:#96a0b5;
+    --buy:#26a071; --sell:#d1495b; --accent:#e0b341;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:20px;background:var(--bg);color:var(--fg);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;
+       display:flex;justify-content:center}
+  .wrap{width:100%;max-width:460px}
+  .head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  h1{font-size:26px;margin:0;letter-spacing:.5px}
+  .side{font-size:15px;font-weight:700;padding:3px 12px;border-radius:999px}
+  .buy{background:rgba(38,160,113,.15);color:var(--buy)}
+  .sell{background:rgba(209,73,91,.15);color:var(--sell)}
+  .age{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;
+       background:var(--card);border:1px solid var(--line);border-radius:12px;
+       padding:12px 14px;margin-bottom:8px}
+  .label{color:var(--muted);font-size:13px}
+  .value{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;
+         direction:ltr;unicode-bidi:plaintext}
+  button{background:transparent;border:1px solid var(--line);color:var(--muted);
+         border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;
+         font-family:inherit;white-space:nowrap}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.done{border-color:var(--buy);color:var(--buy)}
+  .note{color:var(--muted);font-size:12.5px;line-height:1.7;margin-top:18px;
+        border-top:1px solid var(--line);padding-top:14px}
+  .warn{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+(function () {
+  // Parameters ride in the fragment, so they are never sent to any server.
+  var raw = new URLSearchParams(location.hash.slice(1));
+  var app = document.getElementById("app");
+
+  var symbol = raw.get("symbol");
+  if (!symbol) {
+    app.innerHTML = '<p class="age">افتح الصفحة دي من الزرار اللي تحت الكارت في تيليجرام.</p>';
+    return;
+  }
+
+  var side = (raw.get("side") || "").toUpperCase();
+  var digits = parseInt(raw.get("digits") || "2", 10);
+
+  function fmt(name) {
+    var value = parseFloat(raw.get(name));
+    return isNaN(value) ? "—" : value.toFixed(digits);
+  }
+
+  function ageText(iso) {
+    if (!iso) return "";
+    var minutes = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+    if (minutes < 1) return "الحساب اتعمل دلوقتي حالًا";
+    if (minutes < 60) return "الحساب اتعمل من " + minutes + " دقيقة";
+    var hours = Math.floor(minutes / 60);
+    return "الحساب اتعمل من " + hours + " ساعة" + (hours > 4 ? " — راجع السعر قبل ما تنفّذ" : "");
+  }
+
+  var rows = [
+    ["الرمز", symbol],
+    ["الاتجاه", side === "BUY" ? "شراء" : "بيع"],
+    ["الدخول", fmt("entry")],
+    ["وقف الخسارة", fmt("sl")],
+    ["الهدف", fmt("tp")],
+    ["اللوت", raw.get("lot") || "—"]
+  ];
+
+  var html =
+    '<div class="head"><h1>' + symbol + '</h1>' +
+    '<span class="side ' + (side === "BUY" ? "buy" : "sell") + '">' +
+    (side === "BUY" ? "شراء" : "بيع") + "</span></div>" +
+    '<p class="age" id="age">' + ageText(raw.get("at")) + "</p>";
+
+  rows.forEach(function (row) {
+    html +=
+      '<div class="row"><div><div class="label">' + row[0] + "</div>" +
+      '<div class="value">' + row[1] + "</div></div>" +
+      '<button data-copy="' + String(row[1]).replace(/"/g, "&quot;") + '">نسخ</button></div>';
+  });
+
+  html +=
+    '<p class="note"><span class="warn">القيم دي محسوبة من قواعد ثابتة على شمعة انتهت خلاص — مش توصية.</span> ' +
+    "افتح أمر جديد في ميتاتريدر والصق القيم. راجع السعر الحالي وحجم اللوت عند وسيطك قبل التنفيذ، " +
+    "لأن قيمة النقطة وحجم العقد بيختلفوا من وسيط للتاني.</p>";
+
+  app.innerHTML = html;
+
+  app.addEventListener("click", function (event) {
+    var button = event.target.closest("button[data-copy]");
+    if (!button) return;
+    navigator.clipboard.writeText(button.getAttribute("data-copy")).then(function () {
+      button.textContent = "اتنسخ ✓";
+      button.classList.add("done");
+      setTimeout(function () {
+        button.textContent = "نسخ";
+        button.classList.remove("done");
+      }, 1400);
+    });
+  });
+
+  // keep the age honest while the page stays open
+  setInterval(function () {
+    document.getElementById("age").textContent = ageText(raw.get("at"));
+  }, 30000);
+})();
+</script>
+</body>
+</html>

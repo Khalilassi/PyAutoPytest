@@ -44,6 +44,7 @@ DEFAULT_FEEDS_FILE = Path(__file__).with_name("feeds.yml")
 DEFAULT_STATE_FILE = Path(__file__).parent / "state" / "seen.json"
 
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
+TELEGRAM_PHOTO_API = "https://api.telegram.org/bot{token}/sendPhoto"
 USER_AGENT = "gold-news-bot/1.0"
 REQUEST_TIMEOUT = 20
 
@@ -283,6 +284,36 @@ def send_message(token: str, chat_id: str, text: str) -> bool:
 
     if not response.ok:
         LOGGER.error("telegram rejected the message: %s %s", response.status_code, response.text[:300])
+        return False
+    return True
+
+
+def send_photo(token: str, chat_id: str, photo_path, caption: str, buttons: list | None = None) -> bool:
+    """Send an image with an HTML caption and an optional inline keyboard."""
+    payload = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
+    if buttons:
+        payload["reply_markup"] = json.dumps({"inline_keyboard": buttons})
+
+    try:
+        with open(photo_path, "rb") as handle:
+            response = requests.post(
+                TELEGRAM_PHOTO_API.format(token=token),
+                timeout=REQUEST_TIMEOUT,
+                data=payload,
+                files={"photo": handle},
+            )
+    except (requests.RequestException, OSError) as exc:
+        LOGGER.error("telegram photo request failed: %s", exc)
+        return False
+
+    if response.status_code == 429:
+        retry_after = int(response.json().get("parameters", {}).get("retry_after", 5))
+        LOGGER.warning("rate limited by telegram, sleeping %ss", retry_after)
+        time.sleep(retry_after)
+        return send_photo(token, chat_id, photo_path, caption, buttons)
+
+    if not response.ok:
+        LOGGER.error("telegram rejected the photo: %s %s", response.status_code, response.text[:300])
         return False
     return True
 
