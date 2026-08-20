@@ -4,10 +4,16 @@ on:
   schedule:
     # كل 15 دقيقة (كرون GitHub best-effort، ممكن يتأخر شوية في أوقات الزحمة)
     - cron: '*/15 * * * *'
+    # الملخص اليومي: 11:00 صباحًا بتوقيت الرياض = 08:00 UTC
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'اطبع الأخبار في اللوج من غير ما تبعتها على تيليجرام'
+        description: 'اطبع في اللوج من غير ما تبعت على تيليجرام'
+        type: boolean
+        default: false
+      digest:
+        description: 'ابعت ملخص الـ24 ساعة الجاية بدل تنبيهات الأخبار'
         type: boolean
         default: false
 
@@ -49,6 +55,7 @@ jobs:
             news-bot-state-
 
       - name: Run bot
+        if: github.event.schedule != '0 8 * * *' && !inputs.digest
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -61,13 +68,23 @@ jobs:
       # تنبيهات التقويم الاقتصادي (قبل الخبر بنص ساعة تقريبًا).
       # always() عشان لو بوت الأخبار وقع، التنبيهات تفضل شغالة.
       - name: Run calendar bot
-        if: always()
+        if: always() && github.event.schedule != '0 8 * * *' && !inputs.digest
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CALENDAR_STATE_FILE: state/calendar.json
         run: |
           python gold_news_bot/calendar_bot.py ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      # الملخص اليومي: بيشتغل في تشغيلة الـ 08:00 UTC بس (11:00 الرياض)
+      - name: Run daily digest
+        if: always() && (github.event.schedule == '0 8 * * *' || inputs.digest)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CALENDAR_STATE_FILE: state/calendar.json
+        run: |
+          python gold_news_bot/calendar_bot.py --digest ${{ inputs.dry_run && '--dry-run' || '' }}
 
       # مفاتيح الكاش immutable، فبنحفظ بمفتاح جديد كل run
       - name: Save state

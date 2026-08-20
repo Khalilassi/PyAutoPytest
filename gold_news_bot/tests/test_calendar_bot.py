@@ -100,7 +100,7 @@ class TestMessage:
         assert "بعد ~28 دقيقة" in text
         assert "0.3%" in text and "0.2%" in text
         assert "XAUUSD" in text and "DXY" in text
-        assert "12:28 UTC" in text or "UTC" in text
+        assert "15:28 بتوقيت الرياض" in text
 
     def test_flags_gold_movers(self):
         assert "بتحرّك الذهب" in calendar_bot.build_message(make_event(), CONFIG, now=NOW)
@@ -132,3 +132,45 @@ class TestConfig:
         path.write_text("impacts: [High]\n", encoding="utf-8")
         with pytest.raises(ValueError):
             calendar_bot.load_config(path)
+
+
+class TestDigest:
+    def test_lists_events_grouped_by_day(self):
+        events = [
+            make_event(title="Core CPI m/m", minutes=270),
+            make_event(title="FOMC Member Speaks", minutes=1200, impact="Medium", forecast="", previous=""),
+        ]
+        text = calendar_bot.build_digest(events, CONFIG)
+        assert "أخبار الـ24 ساعة الجاية" in text
+        assert "Core CPI m/m" in text and "FOMC Member Speaks" in text
+        assert text.count("<b>الخميس") + text.count("<b>الجمعة") == 2
+
+    def test_says_so_when_nothing_is_scheduled(self):
+        text = calendar_bot.build_digest([], CONFIG)
+        assert "مفيش أخبار مؤثرة" in text
+
+    def test_times_are_riyadh_not_utc(self):
+        # 12:30 UTC lands at 15:30 in Riyadh
+        text = calendar_bot.build_digest([make_event(minutes=30)], CONFIG)
+        assert "15:30" in text and "12:30" not in text
+
+    def test_marks_impact_with_an_icon(self):
+        text = calendar_bot.build_digest([make_event(), make_event(title="PMI", impact="Medium")], CONFIG)
+        assert "\U0001f534" in text and "\U0001f7e0" in text
+
+    def test_carries_the_not_a_signal_note(self):
+        assert "مش توصية" in calendar_bot.build_digest([make_event()], CONFIG)
+
+    def test_window_covers_a_full_day(self):
+        inside = make_event(title="inside", minutes=23 * 60)
+        outside = make_event(title="outside", minutes=25 * 60)
+        picked = calendar_bot.due_within([inside, outside], ["High"], ["USD"], 24, now=NOW)
+        assert [e.title for e in picked] == ["inside"]
+
+
+class TestAlertTiming:
+    def test_alert_time_is_riyadh(self):
+        text = calendar_bot.build_message(make_event(minutes=30), CONFIG, now=NOW)
+        assert "15:30" in text
+        assert "الرياض" in text
+        assert "UTC" not in text

@@ -34,6 +34,7 @@ import requests
 import yaml
 
 from bot import REQUEST_TIMEOUT, USER_AGENT, load_state, prune_state, save_state, send_message
+from localtime import TZ_LABEL, format_day, format_time, to_local
 
 LOGGER = logging.getLogger("calendar_bot")
 
@@ -152,7 +153,7 @@ def build_message(event: Event, config: dict, now: datetime | None = None) -> st
     lines = [
         f"⏰ <b>بعد ~{minutes} دقيقة</b>",
         f"{flag} {html.escape(event.currency)} · <b>{html.escape(event.title)}</b> · تأثير عالي",
-        f"\U0001f552 {event.when.strftime('%H:%M')} UTC",
+        f"\U0001f552 {format_time(event.when)} {TZ_LABEL}",
     ]
 
     if event.forecast or event.previous:
@@ -174,6 +175,54 @@ def build_message(event: Event, config: dict, now: datetime | None = None) -> st
     return "\n".join(lines)
 
 
+IMPACT_ICONS = {"high": "\U0001f534", "medium": "\U0001f7e0", "low": "\U0001f7e1"}
+
+
+def due_within(
+    events: Sequence[Event],
+    impacts: Sequence[str],
+    currencies: Sequence[str],
+    hours: int,
+    now: datetime | None = None,
+) -> list[Event]:
+    """Everything landing in the next `hours` hours, soonest first."""
+    now = now or datetime.now(timezone.utc)
+    return due_soon(events, impacts, currencies, hours * 60, now=now)
+
+
+def build_digest(events: Sequence[Event], config: dict, hours: int = 24) -> str:
+    """One message listing the releases of the coming day, grouped per day."""
+    header = [
+        f"\U0001f4c5 <b>أخبار الـ{hours} ساعة الجاية</b>",
+        f"<i>كل التوقيتات {TZ_LABEL}</i>",
+    ]
+    if not events:
+        header.append("")
+        header.append("مفيش أخبار مؤثرة مجدولة في الفترة دي. \U0001f634")
+        return "\n".join(header)
+
+    lines = list(header)
+    current_day = None
+    for event in events:
+        day = format_day(event.when)
+        if day != current_day:
+            current_day = day
+            lines.append("")
+            lines.append(f"<b>{day}</b>")
+
+        icon = IMPACT_ICONS.get(event.impact.lower(), "\u26aa")
+        flag = FLAGS.get(event.currency, "")
+        row = f"{icon} {format_time(event.when)} · {flag} {html.escape(event.currency)} · {html.escape(event.title)}"
+        if event.forecast or event.previous:
+            row += f" — متوقع {html.escape(event.forecast or '—')} | سابق {html.escape(event.previous or '—')}"
+        lines.append(row)
+
+    lines.append("")
+    lines.append("\U0001f534 تأثير عالي · \U0001f7e0 متوسط")
+    lines.append("<i>جدول مواعيد — مش توصية بيع أو شراء.</i>")
+    return "\n".join(lines)
+
+
 def is_gold_mover(event: Event, config: dict) -> bool:
     title = event.title.lower()
     return any(marker.lower() in title for marker in config.get("gold_movers", []))
@@ -182,6 +231,11 @@ def is_gold_mover(event: Event, config: dict) -> bool:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Alert before high-impact economic releases.")
     parser.add_argument("--dry-run", action="store_true", help="print instead of sending")
+    parser.add_argument(
+        "--digest",
+        action="store_true",
+        help="send one summary of the next 24 hours instead of the pre-release alerts",
+    )
     parser.add_argument("--config", type=Path, default=None)
     parser.add_argument("--state", type=Path, default=None)
     return parser.parse_args(argv)
@@ -207,10 +261,37 @@ def main(argv: Sequence[str] | None = None) -> int:
     events = fetch_events(config["source_url"])
 
     now = datetime.now(timezone.utc)
-    upcoming = [e for e in due_soon(events, config.get("impacts", ["High"]), config.get("currencies", ["USD"]), lead_minutes, now=now) if e.uid not in seen]
+    now_iso = now.isoformat()
+    currencies = config.get("currencies", ["USD"])
+
+    if args.digest:
+        hours = int(config.get("digest_hours", 24))
+        # the daily summary is keyed by its local date, so a re-run cannot repeat it
+        key = f"digest-{to_local(now).date().isoformat()}"
+        if key in seen:
+            LOGGER.info("digest for %s already sent", key)
+            return 0
+
+        upcoming = due_within(events, config.get("digest_impacts", ["High", "Medium"]), currencies, hours, now=now)
+        text = build_digest(upcoming, config, hours=hours)
+        LOGGER.info("digest: %d event(s) in the next %d hours", len(upcoming), hours)
+
+        if args.dry_run:
+            print(text)
+        elif not send_message(token, chat_id, text):
+            LOGGER.warning("digest not sent, will retry next run")
+            return 0
+        seen[key] = now_iso
+        save_state(state_file, seen)
+        return 0
+
+    upcoming = [
+        event
+        for event in due_soon(events, config.get("impacts", ["High"]), currencies, lead_minutes, now=now)
+        if event.uid not in seen
+    ]
     LOGGER.info("%d event(s) due within %d minutes", len(upcoming), lead_minutes)
 
-    now_iso = now.isoformat()
     for event in upcoming:
         text = build_message(event, config, now=now)
         if args.dry_run:
