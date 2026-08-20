@@ -31,9 +31,9 @@ import yaml
 
 import analysis
 from analysis import Snapshot, Ticket
-from bot import load_state, save_state, send_photo
+from bot import load_state, save_state, send_message, send_photo
 from card import render_card
-from localtime import TZ_LABEL, format_datetime
+from localtime import TZ_LABEL, format_datetime, to_local
 from market_data import MarketDataError, fetch_first_available
 
 LOGGER = logging.getLogger("signals_bot")
@@ -97,6 +97,16 @@ def process_instrument(instrument: dict, config: dict, now: datetime, card_dir: 
     """Returns (snapshot, ticket, card path) or None when data is unusable."""
     sources = instrument.get("sources") or [instrument["symbol"]]
     name = instrument.get("name") or sources[0]
+
+    if not config.get("allow_futures", False):
+        spot_only = [s for s in sources if s not in FUTURES_SOURCES]
+        if len(spot_only) != len(sources):
+            LOGGER.info("%s: ignoring futures sources %s", name, sorted(set(sources) - set(spot_only)))
+        sources = spot_only
+    if not sources:
+        LOGGER.error("%s has no spot source configured — skipping", name)
+        return None
+
     try:
         source, candles = fetch_first_available(
             sources,
@@ -113,7 +123,7 @@ def process_instrument(instrument: dict, config: dict, now: datetime, card_dir: 
     rules = config.get("rules", {})
     snapshot = analysis.build_snapshot(candles, name, int(instrument.get("digits", 2)), rules, source=source)
     ticket = analysis.build_ticket(
-        snapshot, rules, config.get("risk", {}), float(instrument.get("value_per_point", 0))
+        snapshot, rules, config.get("risk", {}), analysis.resolve_value_per_point(instrument, snapshot.last)
     )
 
     card_path = render_card(
@@ -160,9 +170,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     now = datetime.now(timezone.utc)
     sent = 0
 
+    missing: list[str] = []
+
     for instrument in config["instruments"]:
         result = process_instrument(instrument, config, now, card_dir)
         if result is None:
+            missing.append(instrument.get("name") or "?")
             continue
         snapshot, ticket, card_path = result
 
@@ -194,8 +207,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             LOGGER.warning("card for %s not sent, will retry next run", snapshot.name)
 
+    # A silently missing instrument looks the same as a quiet market, so say it
+    # out loud — but once a day, not every quarter hour.
+    for name in missing:
+        key = f"down-{name}-{to_local(now).date().isoformat()}"
+        if key in seen:
+            continue
+        text = (
+            f"\u26a0\ufe0f مفيش بيانات <b>سبوت</b> لـ <b>{name}</b> دلوقتي، فالكارت بتاعه اتخطى.\n"
+            "لو الوضع استمر، غيّر المصدر في <code>signals.yml</code>."
+        )
+        if args.dry_run or send_message(token, chat_id, text):
+            seen[key] = "notified"
+
     save_state(state_file, seen)
-    LOGGER.info("sent %d card(s)", sent)
+    LOGGER.info("sent %d card(s), %d instrument(s) without data", sent, len(missing))
     return 0
 
 

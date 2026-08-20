@@ -156,6 +156,20 @@ def ticket_url(base_url: str, snapshot: Snapshot, ticket: Ticket) -> str | None:
     return f"{base_url}#{params}"
 
 
+def resolve_value_per_point(instrument: dict, last_price: float) -> float:
+    """Dollar value of a 1.0 price move for one lot.
+
+    For a pair quoted in dollars (EURUSD) this is just the contract size. When
+    the dollar is the base currency (USDJPY) the value moves with price, so a
+    fixed number would mis-size every lot — "auto" derives it instead.
+    """
+    raw = instrument.get("value_per_point", 0)
+    if isinstance(raw, str) and raw.strip().lower() == "auto":
+        contract = float(instrument.get("contract_size", 100000))
+        return contract / last_price if last_price else 0.0
+    return float(raw)
+
+
 def age_minutes(candle_time: datetime, now: datetime | None = None) -> int:
     now = now or datetime.now(timezone.utc)
     return max(0, int((now - candle_time).total_seconds() // 60))
