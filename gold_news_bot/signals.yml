@@ -39,8 +39,10 @@ allow_futures: false
 #   XXX/USD (زي EURUSD): بتساوي حجم العقد نفسه، لأن التسعير بالدولار.
 #   USD/XXX (زي USDJPY): بتتغير مع السعر، فبنكتب auto وبتتحسب = حجم العقد ÷ السعر.
 instruments:
+  # Yahoo مافيهاش سبوت ذهب أصلًا (XAUUSD=X و XAU=X بيرجعوا 404، عندهم العقود بس)،
+  # فالذهب بيجي من Twelve Data. محتاج secret اسمه TWELVEDATA_API_KEY.
   - name: "XAUUSD"                      # ذهب فوري مقابل الدولار
-    sources: ["XAUUSD=X", "XAU=X"]
+    sources: ["td:XAU/USD"]
     digits: 2
     value_per_point: 100                # اللوت = 100 أونصة، فكل $1 حركة = $100
   - name: "EURUSD"

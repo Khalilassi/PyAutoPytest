@@ -1,13 +1,23 @@
 """Candle download.
 
-One provider today (the free Yahoo chart endpoint, no API key). It is isolated
-behind parse_chart/fetch_candles so a blocked or changed endpoint is a config
-change, not a rewrite — the RSS side already taught us feeds move.
+Two providers, chosen per symbol by prefix:
+
+    EURUSD=X       the free Yahoo chart endpoint, no key — fine for FX
+    td:XAU/USD     Twelve Data, needs TWELVEDATA_API_KEY — has spot metals
+
+Yahoo carries no spot gold at all (XAUUSD=X and XAU=X both 404; it only lists
+the futures contract), which is why a second provider exists rather than a
+longer list of Yahoo symbols.
+
+Investing.com is deliberately not here: no public API, terms that forbid
+automated extraction, and bot protection that blocks CI runners — a scraper
+against it would be both a violation and a source that breaks within days.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Sequence
 
@@ -19,6 +29,19 @@ from indicators import Candle
 LOGGER = logging.getLogger("market_data")
 
 CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+TWELVEDATA_URL = "https://api.twelvedata.com/time_series"
+TWELVEDATA_PREFIX = "td:"
+
+# Twelve Data spells intervals out; ours follow Yahoo's shorthand.
+TWELVEDATA_INTERVALS = {
+    "1m": "1min",
+    "5m": "5min",
+    "15m": "15min",
+    "30m": "30min",
+    "60m": "1h",
+    "1h": "1h",
+    "1d": "1day",
+}
 
 
 class MarketDataError(RuntimeError):
@@ -70,8 +93,76 @@ def parse_chart(payload: dict) -> list[Candle]:
     return candles
 
 
+def parse_twelvedata(payload: dict) -> list[Candle]:
+    """Turn a Twelve Data time_series response into candles, oldest first."""
+    if payload.get("status") == "error":
+        raise MarketDataError(payload.get("message", "provider returned an error"))
+
+    values = payload.get("values")
+    if not values:
+        raise MarketDataError("payload carried no values")
+
+    candles: list[Candle] = []
+    for row in values:
+        try:
+            when = datetime.fromisoformat(row["datetime"])
+            candle = Candle(
+                when=when.replace(tzinfo=timezone.utc) if when.tzinfo is None else when,
+                open=float(row["open"]),
+                high=float(row["high"]),
+                low=float(row["low"]),
+                close=float(row["close"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+        candles.append(candle)
+
+    if not candles:
+        raise MarketDataError("payload carried no usable candles")
+    candles.sort(key=lambda c: c.when)  # the provider returns newest first
+    return candles
+
+
+def fetch_twelvedata(symbol: str, interval: str, size: int = 500) -> list[Candle]:
+    """Spot metals and FX from Twelve Data. Needs TWELVEDATA_API_KEY."""
+    api_key = os.getenv("TWELVEDATA_API_KEY", "").strip()
+    if not api_key:
+        raise MarketDataError(f"{symbol}: TWELVEDATA_API_KEY is not set")
+
+    try:
+        response = requests.get(
+            TWELVEDATA_URL,
+            params={
+                "symbol": symbol,
+                "interval": TWELVEDATA_INTERVALS.get(interval, interval),
+                "outputsize": size,
+                "timezone": "UTC",
+                "apikey": api_key,
+            },
+            timeout=REQUEST_TIMEOUT,
+            headers={"User-Agent": USER_AGENT},
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise MarketDataError(f"{symbol}: {exc}") from exc
+
+    candles = parse_twelvedata(payload)
+    LOGGER.info(
+        "%s: %d candles, last %s at %s",
+        symbol,
+        len(candles),
+        candles[-1].close,
+        candles[-1].when.isoformat(),
+    )
+    return candles
+
+
 def fetch_candles(symbol: str, interval: str = "15m", lookback: str = "1mo") -> list[Candle]:
     """Download candles for one symbol. Raises MarketDataError on any failure."""
+    if symbol.startswith(TWELVEDATA_PREFIX):
+        return fetch_twelvedata(symbol[len(TWELVEDATA_PREFIX) :], interval)
+
     try:
         response = requests.get(
             CHART_URL.format(symbol=symbol),

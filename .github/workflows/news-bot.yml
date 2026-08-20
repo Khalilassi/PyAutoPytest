@@ -84,6 +84,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SIGNALS_STATE_FILE: state/signals.json
           CARD_DIR: cards
+          TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: |
           python gold_news_bot/signals_bot.py ${{ inputs.dry_run && '--dry-run' || '' }}
 
