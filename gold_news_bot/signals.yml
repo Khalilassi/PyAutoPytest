@@ -1,0 +1,49 @@
+# كروت الحالة الفنية: الأدوات، إعدادات المؤشرات، وقواعد التكيت
+
+# فريم الشموع ومدى البيانات اللي بتتحمّل
+interval: "15m"
+lookback: "1mo"
+
+# صفحة التكيت (GitHub Pages). لو مفعّلتش Pages سيبها فاضية وهتيجي القيم في نص الرسالة.
+ticket_base_url: "https://khalilassi.github.io/PyAutoPytest/ticket.html"
+
+# ابعت الكارت كل تشغيلة (كل 15 دقيقة)، ولا لما الحالة الفنية تتغير بس؟
+# true = أقل إزعاج بكتير، بس مش هيوصلك كارت كل ربع ساعة.
+send_only_on_change: false
+
+# --- قواعد التكيت (كلها معروضة على الكارت نفسه) ---
+rules:
+  rsi_period: 14
+  atr_period: 14
+  fast_ema: 50
+  slow_ema: 200
+  # الاتجاه من علاقة المتوسطين، والزخم بيمنع الدخول في تشبّع
+  rsi_overbought: 70
+  rsi_oversold: 30
+  # الوقف = المسافة دي × ATR، والهدف = مضاعف المخاطرة
+  stop_atr_multiple: 1.5
+  reward_risk: 2.0
+
+# --- حجم اللوت المقترح ---
+risk:
+  account_balance: 1000       # حجم حسابك بالدولار
+  risk_percent: 1.0           # نسبة المخاطرة في الصفقة الواحدة
+# value_per_point = قيمة حركة 1.0 في السعر للوت الواحد بالدولار (اتأكد منها من الوسيط بتاعك)
+
+instruments:
+  - name: "XAUUSD"
+    symbol: "GC=F"            # عقود الذهب الآجلة (أقرب مصدر مجاني للذهب)
+    digits: 2
+    value_per_point: 100
+  - name: "EURUSD"
+    symbol: "EURUSD=X"
+    digits: 5
+    value_per_point: 100000
+  - name: "GBPUSD"
+    symbol: "GBPUSD=X"
+    digits: 5
+    value_per_point: 100000
+  - name: "USDJPY"
+    symbol: "USDJPY=X"
+    digits: 3
+    value_per_point: 1000

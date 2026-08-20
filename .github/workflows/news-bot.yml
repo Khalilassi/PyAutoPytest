@@ -76,6 +76,17 @@ jobs:
         run: |
           python gold_news_bot/calendar_bot.py ${{ inputs.dry_run && '--dry-run' || '' }}
 
+      # كروت الحالة الفنية كصور (كل 15 دقيقة)
+      - name: Run signals bot
+        if: always() && github.event.schedule != '0 8 * * *' && !inputs.digest
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SIGNALS_STATE_FILE: state/signals.json
+          CARD_DIR: cards
+        run: |
+          python gold_news_bot/signals_bot.py ${{ inputs.dry_run && '--dry-run' || '' }}
+
       # الملخص اليومي: بيشتغل في تشغيلة الـ 08:00 UTC بس (11:00 الرياض)
       - name: Run daily digest
         if: always() && (github.event.schedule == '0 8 * * *' || inputs.digest)

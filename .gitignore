@@ -167,3 +167,6 @@ screenshots/
 # Gold news bot dedupe state
 state/
 gold_news_bot/state/
+
+# Rendered signal cards
+cards/
