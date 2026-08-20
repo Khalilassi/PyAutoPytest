@@ -58,3 +58,37 @@ class TestParseChart:
     def test_unexpected_payload_raises(self):
         with pytest.raises(market_data.MarketDataError):
             market_data.parse_chart({})
+
+
+class TestSourceFallback:
+    def test_uses_the_first_source_that_answers(self, monkeypatch):
+        calls = []
+
+        def fake(symbol, interval="15m", lookback="1mo"):
+            calls.append(symbol)
+            if symbol == "XAUUSD=X":
+                raise market_data.MarketDataError("404")
+            return ["candle"]
+
+        monkeypatch.setattr(market_data, "fetch_candles", fake)
+        source, candles = market_data.fetch_first_available(["XAUUSD=X", "GC=F"])
+        assert source == "GC=F"
+        assert candles == ["candle"]
+        assert calls == ["XAUUSD=X", "GC=F"]
+
+    def test_stops_at_the_preferred_source(self, monkeypatch):
+        monkeypatch.setattr(market_data, "fetch_candles", lambda s, **k: [s])
+        source, _ = market_data.fetch_first_available(["XAUUSD=X", "GC=F"])
+        assert source == "XAUUSD=X"
+
+    def test_all_sources_failing_raises(self, monkeypatch):
+        def fake(symbol, **kwargs):
+            raise market_data.MarketDataError(f"{symbol} down")
+
+        monkeypatch.setattr(market_data, "fetch_candles", fake)
+        with pytest.raises(market_data.MarketDataError):
+            market_data.fetch_first_available(["a", "b"])
+
+    def test_no_sources_raises(self):
+        with pytest.raises(market_data.MarketDataError):
+            market_data.fetch_first_available([])

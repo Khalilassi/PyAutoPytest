@@ -85,5 +85,31 @@ def fetch_candles(symbol: str, interval: str = "15m", lookback: str = "1mo") -> 
         raise MarketDataError(f"{symbol}: {exc}") from exc
 
     candles = parse_chart(payload)
-    LOGGER.info("%s: %d candles, last %s", symbol, len(candles), candles[-1].when.isoformat())
+    LOGGER.info(
+        "%s: %d candles, last %s at %s",
+        symbol,
+        len(candles),
+        candles[-1].close,
+        candles[-1].when.isoformat(),
+    )
     return candles
+
+
+def fetch_first_available(
+    sources: Sequence[str], interval: str = "15m", lookback: str = "1mo"
+) -> tuple[str, list[Candle]]:
+    """Try each source in order; return the first that answers with candles.
+
+    Sources are ordered most-correct first, so falling through means falling
+    back to a *different instrument* (spot -> futures, say). The caller is told
+    which one answered precisely so that substitution can be shown to the reader
+    instead of hiding behind the display name.
+    """
+    problems = []
+    for symbol in sources:
+        try:
+            return symbol, fetch_candles(symbol, interval=interval, lookback=lookback)
+        except MarketDataError as exc:
+            LOGGER.warning("source %s unusable: %s", symbol, exc)
+            problems.append(str(exc))
+    raise MarketDataError("; ".join(problems) or "no sources configured")

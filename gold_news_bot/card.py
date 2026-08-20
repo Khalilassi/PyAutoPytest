@@ -163,6 +163,7 @@ def _draw_panel(axis, snapshot: Snapshot, ticket: Ticket | None, age_minutes_val
     axis.text(
         0,
         max(y - 0.02, -0.08),
+        f"source {snapshot.source or '—'}\n"
         f"candle {format_datetime(snapshot.candle_time)} Riyadh\n"
         f"age {age_minutes_value} min",
         color=MUTED,

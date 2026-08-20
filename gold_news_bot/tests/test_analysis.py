@@ -127,3 +127,14 @@ class TestSnapshot:
         assert snap.trend == "UP"
         assert snap.last == closes[-1]
         assert snap.candle_time == candles[-1].when
+
+
+class TestSourceIsCarried:
+    def test_snapshot_records_which_symbol_fed_it(self):
+        closes = [100 + i * 0.5 for i in range(60)]
+        candles = [
+            indicators.Candle(NOW - timedelta(minutes=15 * (60 - i)), c, c + 1, c - 1, c)
+            for i, c in enumerate(closes)
+        ]
+        snap = analysis.build_snapshot(candles, "XAUUSD", 2, RULES, source="GC=F")
+        assert snap.source == "GC=F"

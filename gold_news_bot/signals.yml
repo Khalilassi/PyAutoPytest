@@ -30,20 +30,23 @@ risk:
   risk_percent: 1.0           # نسبة المخاطرة في الصفقة الواحدة
 # value_per_point = قيمة حركة 1.0 في السعر للوت الواحد بالدولار (اتأكد منها من الوسيط بتاعك)
 
+# sources = قايمة مصادر بالترتيب: الأصح الأول، واللي بعده بديل لو الأول مارجعش بيانات.
+# مهم: البديل غالبًا أداة تانية (عقود آجلة مثلًا سعرها أعلى من السبوت بعشرات الدولارات)،
+# عشان كده اسم المصدر اللي اشتغل فعلًا بيتكتب على الكارت وفي الكابشن.
 instruments:
   - name: "XAUUSD"
-    symbol: "GC=F"            # عقود الذهب الآجلة (أقرب مصدر مجاني للذهب)
+    sources: ["XAUUSD=X", "XAU=X", "GC=F"]   # سبوت الأول، والعقود الآجلة آخر حاجة
     digits: 2
     value_per_point: 100
   - name: "EURUSD"
-    symbol: "EURUSD=X"
+    sources: ["EURUSD=X"]
     digits: 5
     value_per_point: 100000
   - name: "GBPUSD"
-    symbol: "GBPUSD=X"
+    sources: ["GBPUSD=X"]
     digits: 5
     value_per_point: 100000
   - name: "USDJPY"
-    symbol: "USDJPY=X"
+    sources: ["USDJPY=X"]
     digits: 3
     value_per_point: 1000
