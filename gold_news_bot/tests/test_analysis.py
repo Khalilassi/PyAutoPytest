@@ -138,3 +138,42 @@ class TestSourceIsCarried:
         ]
         snap = analysis.build_snapshot(candles, "XAUUSD", 2, RULES, source="GC=F")
         assert snap.source == "GC=F"
+
+
+class TestValuePerPoint:
+    def test_dollar_quoted_pair_uses_the_contract_size(self):
+        assert analysis.resolve_value_per_point({"value_per_point": 100000}, 1.09) == 100000
+
+    def test_gold_uses_ounces_per_lot(self):
+        assert analysis.resolve_value_per_point({"value_per_point": 100}, 4480.0) == 100
+
+    def test_auto_derives_from_price_for_usd_base_pairs(self):
+        # USDJPY at 150: one lot of 100,000 USD moves 100,000 JPY per 1.0,
+        # which is 100000/150 dollars
+        value = analysis.resolve_value_per_point({"value_per_point": "auto", "contract_size": 100000}, 150.0)
+        assert abs(value - 666.67) < 0.01
+
+    def test_auto_tracks_the_rate(self):
+        low = analysis.resolve_value_per_point({"value_per_point": "auto"}, 100.0)
+        high = analysis.resolve_value_per_point({"value_per_point": "auto"}, 200.0)
+        assert low > high
+
+    def test_zero_price_does_not_divide_by_zero(self):
+        assert analysis.resolve_value_per_point({"value_per_point": "auto"}, 0.0) == 0.0
+
+    def test_missing_value_is_zero(self):
+        assert analysis.resolve_value_per_point({}, 1.0) == 0.0
+
+
+class TestUsdJpyLotSizing:
+    def test_lot_uses_the_derived_value_not_a_fixed_one(self):
+        snap = analysis.Snapshot(
+            name="USDJPY", digits=3, last=150.0, change_pct=0.0, rsi=55.0,
+            ema_fast=149.0, ema_slow=145.0, macd_hist=0.1, atr=0.5,
+            swing_high=152.0, swing_low=148.0, candle_time=NOW, trend="UP",
+            bias="BUY", source="USDJPY=X",
+        )
+        value = analysis.resolve_value_per_point({"value_per_point": "auto", "contract_size": 100000}, snap.last)
+        ticket = analysis.build_ticket(snap, RULES, RISK, value)
+        stop_distance = snap.atr * RULES["stop_atr_multiple"]
+        assert ticket.lot == round(10 / (stop_distance * value), 2)

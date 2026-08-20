@@ -42,3 +42,43 @@ class TestCaption:
 class TestFingerprint:
     def test_changing_source_forces_a_resend(self):
         assert signals_bot.state_fingerprint(snapshot()) != signals_bot.state_fingerprint(snapshot(source="GC=F"))
+
+
+class TestSpotOnly:
+    def _config(self, allow_futures=False):
+        return {"allow_futures": allow_futures, "rules": {}, "risk": {}}
+
+    def test_futures_sources_are_dropped(self, monkeypatch):
+        asked = []
+
+        def fake(sources, **kwargs):
+            asked.append(list(sources))
+            raise signals_bot.MarketDataError("stop here")
+
+        monkeypatch.setattr(signals_bot, "fetch_first_available", fake)
+        signals_bot.process_instrument(
+            {"name": "XAUUSD", "sources": ["XAUUSD=X", "GC=F"]}, self._config(), NOW, Path("/tmp")
+        )
+        assert asked == [["XAUUSD=X"]]
+
+    def test_instrument_with_only_futures_is_skipped(self, monkeypatch):
+        called = []
+        monkeypatch.setattr(signals_bot, "fetch_first_available", lambda *a, **k: called.append(1))
+        result = signals_bot.process_instrument(
+            {"name": "GOLDFUT", "sources": ["GC=F"]}, self._config(), NOW, Path("/tmp")
+        )
+        assert result is None
+        assert called == []
+
+    def test_futures_allowed_when_explicitly_enabled(self, monkeypatch):
+        asked = []
+
+        def fake(sources, **kwargs):
+            asked.append(list(sources))
+            raise signals_bot.MarketDataError("stop here")
+
+        monkeypatch.setattr(signals_bot, "fetch_first_available", fake)
+        signals_bot.process_instrument(
+            {"name": "XAUUSD", "sources": ["XAUUSD=X", "GC=F"]}, self._config(allow_futures=True), NOW, Path("/tmp")
+        )
+        assert asked == [["XAUUSD=X", "GC=F"]]
